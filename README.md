@@ -2,11 +2,10 @@
 
 This is a terminal-based Battleship game implemented in Java with support for multiple game modes, including:
 
-- **Singleplayer** (You vs AI)
-- **PvPvE** (Two players against a shared AI board)
+- **Singleplayer** (Zen mode, just shoot at a couple target ships)
+- **PvPvE** (Two players against a shared target fleet)
 - **PvE** (You vs a computer enemy)
 - **Online Multiplayer** (Coming soon)
-- **Quit** (End the game)
 
 Built with modularity and extensibility in mind, the game provides a solid base for further enhancements such as AI difficulty, board customization, and multiplayer networking.
 
