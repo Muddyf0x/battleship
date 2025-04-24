@@ -119,10 +119,10 @@ public class BGE {
     }
     public int isGameWon() {
         if (areAllShipsSunk(ships2)) {
-            cleanBoard();
+            resetGame();
             return 1;
         } else if (areAllShipsSunk(ships1) && numOfPlayers != 1) {
-            cleanBoard();
+            resetGame();
             return 2;
         } else {
             return 0;
@@ -342,7 +342,7 @@ public class BGE {
     public void onlineMultiPlayer(Random rand) {
 
     }
-    private void cleanBoard() {
+    private void resetGame() {
         this.board1 = emptyBoard.clone();
         this.board2 = emptyBoard.clone();
         this.hitsPlayer1 = 0;
