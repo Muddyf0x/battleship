@@ -24,11 +24,16 @@ public class BGE {
     };
 */
     final static int[] FLEET = { BATTLESHIP };
-    int[] board1, board2;
+
+    int[] board1, board2, emptyBoard;
     List<Ship> ships1 = new ArrayList<>();
     List<Ship> ships2 = new ArrayList<>();
-    int rounds;
     int numOfPlayers;
+
+    int rounds;
+    int hitsPlayer1, hitsPlayer2;
+    int missesPlayer1, missesPlayer2;
+
 
     public static BGE createGame() {
         BGE game = new BGE();
@@ -114,8 +119,10 @@ public class BGE {
     }
     public int isGameWon() {
         if (areAllShipsSunk(ships2)) {
+            cleanBoard();
             return 1;
         } else if (areAllShipsSunk(ships1) && numOfPlayers != 1) {
+            cleanBoard();
             return 2;
         } else {
             return 0;
@@ -154,6 +161,7 @@ public class BGE {
     private BGE() {
         board1 = new int[DEFAULT_BOARD_SIZE * DEFAULT_BOARD_SIZE];
         board2 = new int[DEFAULT_BOARD_SIZE * DEFAULT_BOARD_SIZE];
+        emptyBoard = new int[DEFAULT_BOARD_SIZE * DEFAULT_BOARD_SIZE];
     }
 
     private void placeShipsRandom(List<Ship> ships, Random rand) {
@@ -206,8 +214,8 @@ public class BGE {
         }
     }
     private void singlePlayer(Random rand) {
-        numOfPlayers = 1;
-        rounds = 0;
+        this.numOfPlayers = 1;
+        this.rounds = 0;
         placeShipsRandom(ships2, rand);
         applyShipsToBoard(board2, ships2);
         rounds++;
@@ -333,5 +341,14 @@ public class BGE {
     }
     public void onlineMultiPlayer(Random rand) {
 
+    }
+    private void cleanBoard() {
+        this.board1 = emptyBoard.clone();
+        this.board2 = emptyBoard.clone();
+        this.hitsPlayer1 = 0;
+        this.hitsPlayer2 = 0;
+        this.missesPlayer1 = 0;
+        this.missesPlayer2 = 0;
+        this.rounds = 0;
     }
 }
