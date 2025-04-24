@@ -115,7 +115,7 @@ public class BGE {
     public int isGameWon() {
         if (areAllShipsSunk(ships2)) {
             return 1;
-        } else if (areAllShipsSunk(ships1)) {
+        } else if (areAllShipsSunk(ships1) && numOfPlayers != 1) {
             return 2;
         } else {
             return 0;
