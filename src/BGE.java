@@ -1,195 +1,213 @@
-import java.util.*;
-
-/*
-TODO - Variable size boards
-TODO - Add Server for Multiplayer
-TODO - Add custom placement for ships, via file/ui
-TODO - Add user ability to show stats
-TODO - Add different computer enemies
-TODO - Automatically mark fields around sunk ships as empty = O
- */
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
 
 public class BGE {
-    final int DEFAULT_BOARD_SIZE = 10;
+    private static final int[] SHIP_SIZE = {5, 4, 3, 3, 2};
+    static final char WATER = '~';
+    static final char SHIP = 'S';
+    static final char HIT = 'X';
+    static final char MISS = 'O';
 
-    static final int BATTLESHIP = 5;
-    static final int CRUISER = 4;
-    static final int DESTROYER = 3;
-    static final int SUBMARINE = 2;
-    // uncomment for production
-/*
-    final static int[] FLEET = {
-            BATTLESHIP, CRUISER, CRUISER, DESTROYER, DESTROYER,
-            DESTROYER, SUBMARINE, SUBMARINE, SUBMARINE, SUBMARINE
-    };
-*/
-    final static int[] FLEET = { BATTLESHIP };
-    int[] board1, board2;
-    List<Ship> ships1 = new ArrayList<>();
-    List<Ship> ships2 = new ArrayList<>();
-    int rounds;
-    int numOfPlayers;
 
-    public static BGE createGame() {
-        BGE game = new BGE();
-        return game;
+    static int boardSize = 10;
+    static char[][] boards = new char[2][];
+    static int currentPlayer;
+    static boolean boardSet;
+    static boolean gameReady;
+
+    public static void startGame() {
+        startGame(10);
     }
 
-    public void startGame() {
-        Random rand = new Random();
-        // build board for player1
-        placeShipsRandom(ships1, rand);
-        applyShipsToBoard(board1, ships1);
-        rounds = 0;
-    }
-    public void startGame(int gameMode) {
-        Random rand = new Random();
+    public static void startGame(int size) {
+        boardSet = false;
+        gameReady = false;
+        boardSize = size;
+        boards[0] = new char[boardSize * boardSize];
+        boards[1] = new char[boardSize * boardSize];
 
-        switch (gameMode) {
-            case 1 -> {singlePlayer(rand);}
-            case 2 -> {pvpve(rand);}
-            case 3 -> {pve(rand);}
-            case 4 -> {onlineMultiPlayer(rand);}
-        }
-    }
-
-    public boolean shoot(int x, int y) {
-        int idx = x + y * DEFAULT_BOARD_SIZE;
-        List<Ship> ships;
-        int[] board;
-
-        if (numOfPlayers == 1 || rounds % numOfPlayers == 0) {
-            // Player 1's turn → shoot at board2
-            ships = ships2;
-            board = board2;
-        } else {
-            // Player 2's turn → shoot at board1
-            ships = ships1;
-            board = board1;
-        }
-
-        for (Ship ship : ships) {
-            if (ship.isHit(x, y)) {
-                board[idx] = 4; // hit
-                if (ship.isSunk()) {
-                    System.out.println("Ship ID " + ship.id + " has been sunk!");
-                } else {
-                    System.out.println("Hit on ship " + ship.id + "!");
-                }
-                return true;
+        // Initialize both boards to water
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < boardSize * boardSize; j++) {
+                boards[i][j] = WATER;
             }
         }
+        currentPlayer = 0;
+    }
+    public static boolean placeShip(File file) {
+        if (boardSet)
+            gameReady = true;
+        if (gameReady)
+            return true;
+        if (file == null)
+            placeShipRandom(boards[currentPlayer]);
+        else
+            placeShipFromFile(file, boards[currentPlayer]);
+        boardSet = true;
 
-        if (board[idx] == 0) {
-            board[idx] = 3; // miss
-            System.out.println("Miss.");
-        }
-
+        nextPlayer();
         return false;
     }
 
-    public void printFull(int boardNum) {
-        switch (boardNum) {
-            case 1 -> printBoardFull(this.board1);
-            case 2 -> printBoardFull(this.board2);
-        }
-    }
-    public char[] getBoard(int boardNum) {
-        switch (boardNum) {
-            case 1 -> {
-                return printBoard(this.board1);
-            }
-            case 2 -> {
-                return printBoard(this.board2);
-            }
-        }
-        return new char[0];
-    }
-    public int getDEFAULT_BOARD_SIZE() {
-        return this.DEFAULT_BOARD_SIZE;
-    }
-    public int[] gameStats(int player) {
-        int[] stats = new int[1];
-        return stats;
-    }
-    public int isGameWon() {
-        if (areAllShipsSunk(ships2)) {
-            return 1;
-        } else if (areAllShipsSunk(ships1)) {
-            return 2;
-        } else {
-            return 0;
-        }
-    }
-    private boolean areAllShipsSunk(List<Ship> ships) {
-        for (Ship ship : ships) {
-            if (!ship.isSunk()) return false;
-        }
-        return true;
-    }
+    public static void placeShipFromFile(File file, char[] board) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            int index = 0;
+            String line;
 
-    private void printBoardFull(int[] board) {
-        for (int y = 0; y < DEFAULT_BOARD_SIZE; y++) {
-            for (int x = 0; x < DEFAULT_BOARD_SIZE; x++) {
-                System.out.print(board[x + y * DEFAULT_BOARD_SIZE] + " ");
+            // Fill board with input from file
+            while ((line = reader.readLine()) != null && index < board.length) {
+                line = line.trim();
+                for (int i = 0; i < Math.min(line.length(), boardSize); i++) {
+                    char c = line.charAt(i);
+                    board[index++] = (c == SHIP) ? SHIP : WATER;
+                }
+                // Fill remaining cells in line with water if line too short
+                while (index % boardSize != 0 && index < board.length) {
+                    board[index++] = WATER;
+                }
             }
-            System.out.println();
+
+            // Fill remaining cells in board with water if file too short
+            while (index < board.length) {
+                board[index++] = WATER;
+            }
+
+            // Validate ship layout after parsing
+            if (!isValidBoard(board)) {
+                throw new IllegalArgumentException("Invalid ship layout in file: violates placement rules or incorrect ship count.");
+            }
+
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read ship placement file: " + e.getMessage());
         }
     }
-    private char[] printBoard(int[] board) {
-        char[] charBoard = new char[DEFAULT_BOARD_SIZE * DEFAULT_BOARD_SIZE];
+    // Verify Board - Start
+    public static boolean isValidBoard(char[] board) {
+        // Tracks visited ship cells
+        boolean[][] visited = new boolean[boardSize][boardSize];
+        List<Integer> shipLengths = new ArrayList<>();
 
-        for (int y = 0; y < DEFAULT_BOARD_SIZE; y++) {
-            for (int x = 0; x < DEFAULT_BOARD_SIZE; x++) {
-                switch (board[x + y * DEFAULT_BOARD_SIZE]) {
-                    case 0, 1, 2 -> charBoard[x + y * DEFAULT_BOARD_SIZE] = '.';
-                    case 3 -> charBoard[x + y * DEFAULT_BOARD_SIZE] = 'O';
-                    case 4 -> charBoard[x + y * DEFAULT_BOARD_SIZE] = 'X';
+        // Scan entire board
+        for (int y = 0; y < boardSize; y++) {
+            for (int x = 0; x < boardSize; x++) {
+                if (board[y * boardSize + x] == SHIP && !visited[y][x]) {
+                    // Found unvisited ship part, trace its full length
+                    int length = detectShip(board, visited, x, y);
+                    if (length == -1) return false; // Invalid ship or touching error
+                    shipLengths.add(length);
                 }
             }
         }
-        return charBoard;
+
+        // Count ships by size
+        int[] foundCounts = new int[6]; // max ship size = 5
+        for (int len : shipLengths) {
+            if (len < 1 || len > 5) return false;
+            foundCounts[len]++;
+        }
+
+        // Expected ship size distribution
+        int[] expected = new int[6];
+        for (int s : SHIP_SIZE) expected[s]++;
+
+        // Must match exactly
+        return Arrays.equals(foundCounts, expected);
     }
 
-    private BGE() {
-        board1 = new int[DEFAULT_BOARD_SIZE * DEFAULT_BOARD_SIZE];
-        board2 = new int[DEFAULT_BOARD_SIZE * DEFAULT_BOARD_SIZE];
-    }
+    private static int detectShip(char[] board, boolean[][] visited, int x, int y) {
+        int dx = 0, dy = 0;
 
-    private void placeShipsRandom(List<Ship> ships, Random rand) {
-        for (int i = 0; i < FLEET.length; i++) {
-            int len = FLEET[i];
+        // Determine orientation: horizontal or vertical
+        if (x + 1 < boardSize && board[y * boardSize + (x + 1)] == SHIP) dx = 1;
+        else if (y + 1 < boardSize && board[(y + 1) * boardSize + x] == SHIP) dy = 1;
+
+        int length = 0;
+        int cx = x, cy = y;
+
+        // Traverse the ship
+        while (cx < boardSize && cy < boardSize && board[cy * boardSize + cx] == SHIP) {
+            if (visited[cy][cx]) return -1; // already visited → overlapping or loop
+            visited[cy][cx] = true;
+
+            // Check for diagonal or adjacent touching ships
+            for (int ny = -1; ny <= 1; ny++) {
+                for (int nx = -1; nx <= 1; nx++) {
+                    int tx = cx + nx, ty = cy + ny;
+                    if (tx >= 0 && ty >= 0 && tx < boardSize && ty < boardSize && !visited[ty][tx]) {
+                        // Allow only forward/backward direction, forbid diagonal or side contact
+                        if ((nx != 0 || ny != 0) && board[ty * boardSize + tx] == SHIP &&
+                                (nx != dx || ny != dy)) {
+                            return -1; // touching or malformed ship
+                        }
+                    }
+                }
+            }
+
+            cx += dx;
+            cy += dy;
+            length++;
+        }
+
+        return length;
+    }
+    // Verify Board end
+
+    // Place Ships Randomly - Start
+    public static void placeShipRandom(char[] board) {
+        Random rand = new Random();
+
+        // Fill board with water to reset
+        Arrays.fill(board, WATER);
+
+        // Place each ship from the SHIP_SIZE array
+        for (int shipSize : SHIP_SIZE) {
             boolean placed = false;
 
+            // Try random positions until valid placement is found
             while (!placed) {
-                int x = rand.nextInt(DEFAULT_BOARD_SIZE);
-                int y = rand.nextInt(DEFAULT_BOARD_SIZE);
+                int x = rand.nextInt(boardSize);
+                int y = rand.nextInt(boardSize);
                 boolean horizontal = rand.nextBoolean();
-                Ship candidate = new Ship(i, x, y, len, horizontal);
 
-                if (canPlaceShip(ships, candidate)) {
-                    ships.add(candidate);
+                if (canPlaceShip(board, x, y, shipSize, horizontal)) {
+                    placeShip(board, x, y, shipSize, horizontal);
                     placed = true;
                 }
             }
         }
     }
 
-    private boolean canPlaceShip(List<Ship> ships, Ship newShip) {
-        // Check if the ship fits on the board
-        if (newShip.horizontal) {
-            if (newShip.startX + newShip.length > DEFAULT_BOARD_SIZE) return false;
-        } else {
-            if (newShip.startY + newShip.length > DEFAULT_BOARD_SIZE) return false;
-        }
+    /**
+     * Checks whether a ship of given length can be placed at (x, y)
+     * in the given direction, without overlap or touching other ships.
+     */
+    private static boolean canPlaceShip(char[] board, int x, int y, int length, boolean horizontal) {
+        int dx = horizontal ? 1 : 0;
+        int dy = horizontal ? 0 : 1;
 
-        // Check if any buffer zone cell is already occupied
-        for (int[] coord : newShip.getBufferZone(DEFAULT_BOARD_SIZE)) {
-            int x = coord[0], y = coord[1];
+        // Ensure ship fits within board bounds
+        int endX = x + dx * (length - 1);
+        int endY = y + dy * (length - 1);
+        if (endX >= boardSize || endY >= boardSize) return false;
 
-            for (Ship other : ships) {
-                for (int[] occ : other.getCoordinates()) {
-                    if (occ[0] == x && occ[1] == y) return false;
+        // Check all ship cells and surrounding cells for collisions
+        for (int i = 0; i < length; i++) {
+            int cx = x + dx * i;
+            int cy = y + dy * i;
+
+            for (int ny = -1; ny <= 1; ny++) {
+                for (int nx = -1; nx <= 1; nx++) {
+                    int tx = cx + nx;
+                    int ty = cy + ny;
+                    if (tx >= 0 && ty >= 0 && tx < boardSize && ty < boardSize) {
+                        if (board[ty * boardSize + tx] == SHIP) return false; // Touching another ship
+                    }
                 }
             }
         }
@@ -197,141 +215,241 @@ public class BGE {
         return true;
     }
 
-    private void applyShipsToBoard(int[] board, List<Ship> ships) {
-        for (Ship ship : ships) {
-            for (int[] coord : ship.getCoordinates()) {
-                int x = coord[0], y = coord[1];
-                board[x + y * DEFAULT_BOARD_SIZE] = 2; // 2 = ship
-            }
+    /**
+     * Places a ship on the board by setting SHIP characters at calculated positions.
+     */
+    private static void placeShip(char[] board, int x, int y, int length, boolean horizontal) {
+        int dx = horizontal ? 1 : 0;
+        int dy = horizontal ? 0 : 1;
+
+        for (int i = 0; i < length; i++) {
+            int cx = x + dx * i;
+            int cy = y + dy * i;
+            board[cy * boardSize + cx] = SHIP;
         }
     }
-    private void singlePlayer(Random rand) {
-        numOfPlayers = 1;
-        rounds = 0;
-        placeShipsRandom(ships2, rand);
-        applyShipsToBoard(board2, ships2);
-        rounds++;
-    }
-    private void pvpve(Random rand) {
-        this.numOfPlayers = 2;
-        this.rounds = 0;
+    // Place ships Random - End
 
-        // Create shared enemy board (board2)
-        placeShipsRandom(ships2, rand);
-        applyShipsToBoard(board2, ships2);
+    public static boolean shoot(int x, int y) {
+        // Determine opponent board
+        int opponentId = (currentPlayer + 1) % 2;
+        char[] targetBoard = boards[opponentId];
 
-        System.out.println("PvPvE mode started!");
+        int index = y * boardSize + x;
 
-        int hitsPlayer1 = 0;
-        int hitsPlayer2 = 0;
-
-        // Game loop continues until all ships on board2 are sunk
-        while (!areAllShipsSunk(ships2)) {
-            int currentPlayer = (rounds % 2) + 1;
-            System.out.println("\nPlayer " + currentPlayer + "'s turn:");
-            IO.printBoard(getBoard(2), DEFAULT_BOARD_SIZE); // Always show board2
-
-            int[] coords = IO.readCoordinate(DEFAULT_BOARD_SIZE);
-            boolean hit = shootPvPvE(coords[0], coords[1]); // custom shoot version for PvPvE
-
-            if (hit) {
-                if (currentPlayer == 1) hitsPlayer1++;
-                else hitsPlayer2++;
-            }
-
-            rounds++;
+        // Out-of-bounds check (optional, assumes UI ensures valid input)
+        if (x < 0 || x >= boardSize || y < 0 || y >= boardSize) {
+            throw new IllegalArgumentException("Shot out of bounds at (" + x + "," + y + ")");
         }
 
-        System.out.println("\nGame Over! All ships have been sunk.");
-        System.out.println("Player 1 hits: " + hitsPlayer1);
-        System.out.println("Player 2 hits: " + hitsPlayer2);
-
-        if (hitsPlayer1 > hitsPlayer2) {
-            System.out.println("🏆 Player 1 wins!");
-        } else if (hitsPlayer2 > hitsPlayer1) {
-            System.out.println("🏆 Player 2 wins!");
-        } else {
-            System.out.println("🤝 It's a draw!");
-        }
-    }
-    private boolean shootPvPvE(int x, int y) {
-        int idx = x + y * DEFAULT_BOARD_SIZE;
-
-        for (Ship ship : ships2) {
-            if (ship.isHit(x, y)) {
-                board2[idx] = 4; // hit
-                System.out.println("Hit!");
-                return true;
-            }
+        // Evaluate tile and apply change
+        if (targetBoard[index] == SHIP) {
+            targetBoard[index] = HIT;
+            return true;
+        } else if (targetBoard[index] == WATER) {
+            targetBoard[index] = MISS;
+            return false;
         }
 
-        if (board2[idx] == 0) {
-            board2[idx] = 3; // miss
-            System.out.println("Miss.");
-        }
-
+        // Already shot here (HIT or MISS) – no change
         return false;
     }
-    public void pve(Random rand) {
-        this.numOfPlayers = 2;
-        this.rounds = 0;
+    public static char[] getBoard() {
+        // Get opponent's board (the one the current player is shooting at)
+        int opponentId = (currentPlayer + 1) % 2;
+        char[] board = boards[opponentId];
 
-        // Setup player and AI boards
-        placeShipsRandom(ships1, rand); // Player's fleet
-        applyShipsToBoard(board1, ships1);
-
-        placeShipsRandom(ships2, rand); // AI's fleet
-        applyShipsToBoard(board2, ships2);
-
-        System.out.println("PvE mode started!");
-        System.out.println("You are Player 1. Try to sink the AI's fleet!");
-
-        Set<Integer> aiShots = new HashSet<>();
-
-        while (true) {
-            boolean hit;
-
-            if (rounds % 2 == 0) {
-                // Player's turn
-                System.out.println("\nYour turn:");
-                IO.printBoard(getBoard(2), DEFAULT_BOARD_SIZE);
-
-                int[] coords = IO.readCoordinate(DEFAULT_BOARD_SIZE);
-                hit = shoot(coords[0], coords[1]);
+        // Return a masked copy where unhit ships are hidden
+        char[] visible = new char[board.length];
+        for (int i = 0; i < board.length; i++) {
+            char c = board[i];
+            if (c == SHIP) {
+                visible[i] = WATER; // hide unhit ship
             } else {
-                // AI's turn
-                System.out.println("\nAI's turn:");
-                int x, y, idx;
-
-                do {
-                    x = rand.nextInt(DEFAULT_BOARD_SIZE);
-                    y = rand.nextInt(DEFAULT_BOARD_SIZE);
-                    idx = x + y * DEFAULT_BOARD_SIZE;
-                } while (aiShots.contains(idx));
-
-                aiShots.add(idx);
-                System.out.println("AI shoots at: " + (char) ('A' + x) + (y + 1));
-                hit = shoot(x, y);
-            }
-
-            // Check for win condition
-            if (areAllShipsSunk(ships1)) {
-                System.out.println("💀 The AI has sunk your fleet. You lose.");
-                break;
-            } else if (areAllShipsSunk(ships2)) {
-                System.out.println("🎉 You sunk all the AI's ships! You win!");
-                break;
-            }
-
-            // Only switch turns if it was a miss
-            if (!hit) {
-                rounds++;
-            } else {
-                System.out.println("🔥 Bonus shot! You hit a ship.");
+                visible[i] = c; // show HIT, MISS, WATER
             }
         }
+        return visible;
     }
-    public void onlineMultiPlayer(Random rand) {
 
+    public static int isWon() {
+        int opponentId = (currentPlayer + 1) % 2;
+
+        // If opponent has no SHIP tiles left, current player wins
+        if (!containsShip(boards[opponentId])) return 1;
+
+        // If current player has no SHIP tiles left, they lost
+        if (!containsShip(boards[currentPlayer])) return 2;
+
+        // Game still in progress
+        return 0;
+    }
+
+    /**
+     * Returns true if the given board still contains any unhit ship tiles.
+     */
+    private static boolean containsShip(char[] board) {
+        for (char c : board) {
+            if (c == SHIP) return true;
+        }
+        return false;
+    }
+    public static void nextPlayer() {
+        currentPlayer = (currentPlayer + 1) % 2;
+    }
+
+    // Tests
+    private static boolean testFileToBoard() {
+        char[] testBoard = new char[boardSize * boardSize];
+        placeShipFromFile(new File("/home/muddy/IdeaProjects/battleship/src/testfile"), testBoard);
+        char[] referenceBoard = {
+                '~', '~', '~', '~', '~', 'S', '~', '~', '~', '~',
+                '~', '~', '~', 'S', '~', 'S', '~', '~', '~', '~',
+                '~', '~', '~', 'S', '~', 'S', '~', '~', '~', '~',
+                '~', '~', '~', 'S', '~', '~', '~', '~', '~', '~',
+                '~', '~', '~', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', 'S', '~', '~', '~', 'S', 'S', '~', '~',
+                '~', '~', 'S', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', 'S', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', 'S', '~', '~', 'S', 'S', 'S', 'S', 'S',
+                '~', '~', '~', '~', '~', '~', '~', '~', '~', '~'
+        };
+        if (Arrays.equals(testBoard, referenceBoard)) {
+            System.out.println("Test passed - testFileToBoard");
+            return true;
+        } else
+            return false;
+    }
+    private static boolean testRandomToBoard() {
+        char[] testBoard = new char[boardSize * boardSize];
+        placeShipRandom(testBoard);
+        if (isValidBoard(testBoard)) {
+            System.out.println("Test passed - testRandomToBoard");
+            return true;
+        } else
+            return false;
+    }
+    private static boolean testShoot() {
+        boolean test = true;
+
+        currentPlayer = 1;
+
+        char[] referenceBoard = {
+                '~', '~', '~', '~', '~', 'S', '~', '~', '~', '~',
+                '~', '~', '~', 'S', '~', 'S', '~', '~', '~', '~',
+                '~', '~', '~', 'S', '~', 'S', '~', '~', '~', '~',
+                '~', '~', '~', 'S', '~', '~', '~', '~', '~', '~',
+                '~', '~', '~', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', 'S', '~', '~', '~', 'S', 'S', '~', '~',
+                '~', '~', 'S', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', 'S', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', 'S', '~', '~', 'S', 'S', 'S', 'S', 'S',
+                '~', '~', '~', '~', '~', '~', '~', '~', '~', '~'
+        };
+        boards[0] = referenceBoard;
+        if (shoot(0, 0))
+            test = false;
+        if (!shoot(5, 0))
+            test = false;
+        if (test) {
+            System.out.println("Test passed - testShoot");
+            return true;
+        } else
+            return false;
+    }
+    private static boolean testIsWon() {
+        boolean test = true;
+        char[] referenceBoard0 = {
+                '~', '~', '~', '~', '~', 'S', '~', '~', '~', '~',
+                '~', '~', '~', 'S', '~', 'S', '~', '~', '~', '~',
+                '~', '~', '~', 'S', '~', 'S', '~', '~', '~', '~',
+                '~', '~', '~', 'S', '~', '~', '~', '~', '~', '~',
+                '~', '~', '~', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', 'S', '~', '~', '~', 'S', 'S', '~', '~',
+                '~', '~', 'S', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', 'S', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', 'S', '~', '~', 'S', 'S', 'S', 'S', 'S',
+                '~', '~', '~', '~', '~', '~', '~', '~', '~', '~'
+        };
+        boards[0] = referenceBoard0;
+        char[] referenceBoard1 = {
+                '~', '~', '~', '~', '~', 'X', '~', '~', '~', '~',
+                '~', '~', '~', 'X', '~', 'X', '~', '~', '~', '~',
+                '~', '~', '~', 'X', '~', 'X', '~', '~', '~', '~',
+                '~', '~', '~', 'X', '~', '~', '~', '~', '~', '~',
+                '~', '~', '~', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', 'X', '~', '~', '~', 'X', 'X', '~', '~',
+                '~', '~', 'X', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', 'X', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', 'X', '~', '~', 'X', 'X', 'X', 'X', 'X',
+                '~', '~', '~', '~', '~', '~', '~', '~', '~', '~'
+        };
+        boards[1] = referenceBoard1;
+        currentPlayer = 0;
+        if (isWon() != 1)
+            test = false;
+        currentPlayer = 1;
+        if (isWon() != 2)
+            test = false;
+
+        if (test) {
+            System.out.println("Test passed - testIsWon");
+            return true;
+        } else
+            return false;
+    }
+    private static boolean testGetBoard() {
+        char[] referenceBoard = {
+                'O', '~', '~', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', '~', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', '~', 'X', '~', '~', '~', '~', '~', '~',
+                '~', '~', '~', 'X', '~', '~', '~', '~', '~', '~',
+                '~', '~', '~', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', '~', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', '~', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', '~', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', '~', '~', '~', '~', 'X', '~', 'X', '~',
+                '~', '~', '~', '~', '~', '~', '~', '~', '~', 'O'
+        };
+        char[] referenceBoard0 = {
+                'O', '~', '~', '~', '~', 'S', '~', '~', '~', '~',
+                '~', '~', '~', 'S', '~', 'S', '~', '~', '~', '~',
+                '~', '~', '~', 'X', '~', 'S', '~', '~', '~', '~',
+                '~', '~', '~', 'X', '~', '~', '~', '~', '~', '~',
+                '~', '~', '~', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', 'S', '~', '~', '~', 'S', 'S', '~', '~',
+                '~', '~', 'S', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', 'S', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', 'S', '~', '~', 'S', 'X', 'S', 'X', 'S',
+                '~', '~', '~', '~', '~', '~', '~', '~', '~', 'O'
+        };
+        boards[0] = referenceBoard0;
+        currentPlayer = 1;
+
+        if (Arrays.equals(getBoard(), referenceBoard)) {
+            System.out.println("Test passed - testGetBoard");
+            return true;
+        } else
+            return false;
+
+    }
+    // Run Tests
+    public static void main(String[] args) {
+        int failedTests = 0;
+        if (!testFileToBoard())
+            failedTests++;
+        if (!testRandomToBoard())
+            failedTests++;
+        if (!testShoot())
+            failedTests++;
+        if (!testIsWon())
+            failedTests++;
+        if (!testGetBoard())
+            failedTests++;
+
+        if (failedTests == 0)
+            System.out.println("All Tests passed successfully");
+        else
+            System.out.println(failedTests + " Test failed");
     }
 }
