@@ -2,6 +2,7 @@ import java.io.IOException;
 import java.net.Socket;
 
 public class UI {
+    static boolean host;
     public static void main(String[] args) {
         IO.printWelcomeScreen();
 
@@ -26,7 +27,7 @@ public class UI {
                 case 3 -> { // Network
                     try {
                         int port       = IO.promptPort();
-                        boolean host   = IO.promptHostOrJoin().equals("HOST");
+                        host   = IO.promptHostOrJoin().equals("HOST");
                         Socket socket;
                         if (host) {
                             Server ns = new Server(port);
@@ -36,13 +37,15 @@ public class UI {
                             String ip = IO.promptServerIP();
                             socket = new Socket(ip, port);
                         }
-
+                        players[0] = new LocalHumanPlayer();
+                        players[1] = new NetworkPlayer(socket);
+                        /*
                         // 1) Prompt *this* player once for their board:
                         LocalHumanPlayer local = new LocalHumanPlayer();
                         local.setupBoard(BGE.boards[0], boardSize);
 
                         // 2) Exchange so each side ends up with the other board:
-                        Server.exchangeBoards(socket,
+                        NetworkUtils.exchangeBoards(socket,
                                 BGE.boards[0],  // my board
                                 BGE.boards[1],  // their board
                                 boardSize,
@@ -50,6 +53,8 @@ public class UI {
                         // 3) Set controllers for the game loop:
                         players[0] = local;                       // local moves
                         players[1] = new NetworkPlayer(socket);   // remote moves
+
+                         */
                     } catch (IOException e) {
 
                     }
@@ -71,12 +76,16 @@ public class UI {
                 local.setupBoard(BGE.boards[0], boardSize);
 
                 // send local→remote and receive remote→local
-                Server.exchangeBoards(
-                        (NetworkPlayer)players[1].getSocket(),
-                        BGE.boards[0], BGE.boards[1],
-                        boardSize,
-                        IO.promptHostOrJoin().equals("HOST")
-                );
+                try {
+                    NetworkUtils.exchangeBoards(
+                            ((NetworkPlayer) players[1]).getSocket(),
+                            BGE.boards[0], BGE.boards[1],
+                            boardSize,
+                            host
+                    );
+                } catch (IOException e) {
+                    System.out.println("Failure to share Board: " + e);
+                }
             } else {
                 // non-network: each player sets up their own
                 for (int i = 0; i < 2; i++) {

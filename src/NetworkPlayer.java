@@ -6,10 +6,12 @@ public class NetworkPlayer implements PlayerController {
     private final BufferedReader in;
     private final PrintWriter out;
     private static String playerName;
+    private Socket socket;
 
     public NetworkPlayer(Socket socket) throws IOException {
         this.in  = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         this.out = new PrintWriter(socket.getOutputStream(), true);
+        this.socket = socket;
     }
 
     @Override
@@ -47,5 +49,8 @@ public class NetworkPlayer implements PlayerController {
     @Override
     public String getPlayerName() {
         return playerName;
+    }
+    public Socket getSocket() {
+        return socket;
     }
 }
