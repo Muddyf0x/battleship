@@ -70,33 +70,13 @@ public class UI {
             }
 
             // Setup boards
-            if (gameMode == 3) {
-                // network: prompt exactly once for local, then exchange
-                LocalHumanPlayer local = (LocalHumanPlayer)players[0];
-                local.setupBoard(BGE.boards[0], boardSize);
-
-                // send local→remote and receive remote→local
-                try {
-                    NetworkUtils.exchangeBoards(
-                            ((NetworkPlayer) players[1]).getSocket(),
-                            BGE.boards[0], BGE.boards[1],
-                            boardSize,
-                            host
-                    );
-                } catch (IOException e) {
-                    System.out.println("Failure to share Board: " + e);
-                }
-            } else {
-                // non-network: each player sets up their own
-                for (int i = 0; i < 2; i++) {
-                    players[i].setupBoard(BGE.boards[i], boardSize);
-                }
+            for (int i = 0; i < 2; i++) {
+                players[i].setupBoard(BGE.boards[i], boardSize);
             }
 
             // Game loop
-            while (winner == 0) {
+            while (true) {
                 int current = BGE.currentPlayer;
-                int opponent = (current + 1) % 2;
 
                 PlayerController currentPlayer = players[current];
                 char[] visibleEnemyBoard = BGE.getBoard();
