@@ -5,13 +5,13 @@ import java.util.Set;
 public class SimpleAIPlayer implements PlayerController {
     private final Random rand = new Random();
     private final Set<Integer> tried = new HashSet<>();
-    private static String playerName;
+    private final String playerName;
 
     public SimpleAIPlayer() {
         String[] robotNames = {
                 "AX-13", "Unit-7", "IronCore", "T-900", "Cobalt", "RX-22", "Echo", "Synthron", "MechaZeta", "BetaPrime"
         };
-        playerName = robotNames[rand.nextInt(robotNames.length)];
+        this.playerName = robotNames[rand.nextInt(robotNames.length)];
     }
 
 
