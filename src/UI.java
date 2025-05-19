@@ -2,6 +2,7 @@ import java.io.File;
 import java.io.IOException;
 
 public class UI {
+    // Todo - remove unused code
     static final int DEFAULT_BOARD_SIZE = 10;
     static final String CODE_WORD = "letmein";
     static boolean host;
@@ -26,6 +27,7 @@ public class UI {
                     players[1] = new LocalHumanPlayer();
                 }
                 case 3 -> { // Network
+                    // Todo - add option to start Server
                     playOnlineGame();
                     continue;
                 }
@@ -92,6 +94,7 @@ public class UI {
                 IO.printDefeatScreen(players[0].getPLAYER_NAME());
         }
     }
+    // Todo - match features with single player
     public static void playOnlineGame() {
         String serverAddress = IO.promptServerIP();
         int port = IO.promptPort();
@@ -121,7 +124,7 @@ public class UI {
                 } else {
                     IO.printEnemyBanner(netUtils.getEnemyName());
                 }
-                netUtils.reciveResult();
+                netUtils.receiveResult();
 
                 IO.printBoard(netUtils.getBoard(), DEFAULT_BOARD_SIZE);
             }

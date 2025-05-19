@@ -1,7 +1,6 @@
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.net.Socket;
 
 class NetworkUtils {
@@ -31,8 +30,6 @@ class NetworkUtils {
         out = new DataOutputStream(socket.getOutputStream());
     }
     public void connectToServer(String code, String name, char[] board) throws IOException {
-        // Todo - send data to server
-
         // send handshake
         out.writeUTF(code);
         out.writeUTF(name);
@@ -41,7 +38,6 @@ class NetworkUtils {
 
         EnemyName = in.readUTF();
         turn = in.readBoolean();
-
     }
 
     public void sendShoot(int y, int x) throws IOException {
@@ -50,7 +46,8 @@ class NetworkUtils {
         out.writeInt(y);         // second coordinate
         out.flush();
     }
-    public void reciveResult() throws IOException {
+
+    public void receiveResult() throws IOException {
         // Todo - fix this
         // 1) framing tag
         String tag = in.readUTF();
@@ -83,11 +80,12 @@ class NetworkUtils {
         String[] p = s.replaceAll("\\[|\\]|\\s", "").split(",");
         return new int[]{ Integer.parseInt(p[0]), Integer.parseInt(p[1]) };
     }
+    // Todo - implement graceful disconnection
     public void endConnection() {
 
     }
 
-
+    // Todo - check actually used functions
     public String getEnemyName() {
         return this.EnemyName;
     }

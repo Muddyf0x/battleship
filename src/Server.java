@@ -149,7 +149,6 @@ public class Server {
             }
             out.flush();
         }
-
         public char[] getBoard() {
             return this.board;
         }

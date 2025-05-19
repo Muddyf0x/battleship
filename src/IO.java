@@ -4,6 +4,8 @@ import java.net.UnknownHostException;
 import java.util.Scanner;
 
 public class IO {
+    // Todo - look over class for unused or duplicate code
+    // Todo - write tests
     private static final Scanner scanner = new Scanner(System.in);
 
     // Converts inputs like "B7", "7B", "b7", etc. to int[2] = {x, y}
