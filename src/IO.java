@@ -300,7 +300,7 @@ public class IO {
             }
         }
     }
-    public static void printAIBanner(String name) {
+    public static void printEnemyBanner(String name) {
         System.out.println("""
     ============================================
                 ENEMY TURN (""" + name.toUpperCase() + ")"

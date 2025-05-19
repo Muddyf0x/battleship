@@ -83,6 +83,10 @@ public class BGE {
             throw new RuntimeException("Failed to read ship placement file: " + e.getMessage());
         }
     }
+    public static void setBoard(char[] board, int player) throws IllegalArgumentException{
+        if (isValidBoard(board))
+            boards[player] = board;
+    }
     // Verify Board - Start
     public static boolean isValidBoard(char[] board) {
         // Tracks visited ship cells
@@ -295,12 +299,16 @@ public class BGE {
         }
         return false;
     }
+    public static void setCurrentPlayer(int player) {
+        currentPlayer = player;
+    }
     public static void nextPlayer() {
         currentPlayer = (currentPlayer + 1) % 2;
     }
     public static int getCurrentPlayer() {
         return currentPlayer;
     }
+
     /**
      * After a hit at (x,y), check if that ship is now fully sunk.
      * If so, mark all surrounding water cells as MISS.
