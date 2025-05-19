@@ -25,39 +25,7 @@ public class UI {
                     players[1] = new LocalHumanPlayer();
                 }
                 case 3 -> { // Network
-                    try {
-                        int port       = IO.promptPort();
-                        host   = IO.promptHostOrJoin().equals("HOST");
-                        Socket socket;
-                        if (host) {
-                            Server ns = new Server(port);
-                            System.out.println("Waiting for opponent…");
-                            socket = ns.waitForClient();
-                        } else {
-                            String ip = IO.promptServerIP();
-                            socket = new Socket(ip, port);
-                        }
-                        players[0] = new LocalHumanPlayer();
-                        players[1] = new NetworkPlayer(socket);
-                        /*
-                        // 1) Prompt *this* player once for their board:
-                        LocalHumanPlayer local = new LocalHumanPlayer();
-                        local.setupBoard(BGE.boards[0], boardSize);
 
-                        // 2) Exchange so each side ends up with the other board:
-                        NetworkUtils.exchangeBoards(socket,
-                                BGE.boards[0],  // my board
-                                BGE.boards[1],  // their board
-                                boardSize,
-                                host);
-                        // 3) Set controllers for the game loop:
-                        players[0] = local;                       // local moves
-                        players[1] = new NetworkPlayer(socket);   // remote moves
-
-                         */
-                    } catch (IOException e) {
-
-                    }
                 }
                 case 23071912 -> {
                     players[0] = new SimpleAIPlayer();
@@ -73,13 +41,14 @@ public class UI {
             for (int i = 0; i < 2; i++) {
                 players[i].setupBoard(BGE.boards[i], boardSize);
             }
-
+            boolean hit = true;
             // Game loop
             while (true) {
-                int current = BGE.currentPlayer;
+
+                int current = BGE.getCurrentPlayer();
 
                 PlayerController currentPlayer = players[current];
-                char[] visibleEnemyBoard = BGE.getBoard();
+                char[] visibleEnemyBoard = BGE.getBoard(hit);
 
                 int[] move = currentPlayer.getNextMove(visibleEnemyBoard, boardSize);
                 if (move == null) {
@@ -87,10 +56,22 @@ public class UI {
                     break;
                 }
 
-                boolean hit = BGE.shoot(move[0], move[1]);
+
+                switch (BGE.shoot(move[0], move[1])) {
+                    case 0 -> hit = false;  // Missed shoot
+                    case 1 -> hit = true;   // Hit
+                    case 2 -> { // Sunk enemy Ship
+                        IO.printShipSunkBanner();
+                        hit = true;
+                    }
+                    case 3 -> { // Already shoot
+                        System.out.println("Already Shoot here");
+                        hit = true;
+                    }
+                }
                 currentPlayer.notifyShotResult(move[0], move[1], hit);
 
-                IO.printBoard(BGE.getBoard(), boardSize);
+                IO.printBoard(BGE.getBoard(hit), boardSize);
 
                 int result = BGE.isWon();
                 if (result == 1) {
@@ -99,10 +80,6 @@ public class UI {
                 } else if (result == 2) {
                     winner = 2;
                     break;
-                }
-
-                if (!hit) {
-                    BGE.nextPlayer();
                 }
             }
 
