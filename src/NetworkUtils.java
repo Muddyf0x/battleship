@@ -18,7 +18,6 @@ class NetworkUtils {
     private char[] board;
     private int[] shoot;
 
-
     NetworkUtils(String serverAdresse, int port) throws IOException {
         this.SERVER_ADRESSE = serverAdresse;
         this.PORT = port;
@@ -39,7 +38,7 @@ class NetworkUtils {
         turn = in.readBoolean();
     }
 
-    public void sendShoot(int y, int x) throws IOException {
+    public void sendShoot(int x, int y) throws IOException {
         out.writeUTF("SHOOT");   // pro-word
         out.writeInt(x);         // first coordinate
         out.writeInt(y);         // second coordinate

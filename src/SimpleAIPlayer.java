@@ -36,6 +36,7 @@ public class SimpleAIPlayer implements PlayerController {
 
     @Override
     public void notifyShotResult(int x, int y, boolean hit) {
+        IO.printTargetLocation(x, y);
         System.out.println(hit ? "Hit!" : "Miss!");
         // Could enhance logic
     }

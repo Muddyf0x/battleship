@@ -19,15 +19,17 @@ public class UI {
             switch (gameMode) {
                 case 1 -> { // PvE
                     players[0] = new LocalHumanPlayer();
-                    players[1] = new SimpleAIPlayer();
+                    if (IO.promptDifficulty() == 1)
+                        players[1] = new SimpleAIPlayer();
+                    else
+                        players[1] = new AdvancedAIPlayer();
                 }
                 case 2 -> { // Local PvP
                     players[0] = new LocalHumanPlayer();
                     players[1] = new LocalHumanPlayer();
                 }
                 case 3 -> { // Network
-                    // Todo - add option to start Server
-                    host = IO.promptHostOrJoin();
+                    host = IO.askRemoteConnection();
                     if (host) {
                         hostGame();
                     } else
@@ -35,8 +37,8 @@ public class UI {
                     continue;
                 }
                 case 23071912 -> {
-                    players[0] = new SimpleAIPlayer();
-                    players[1] = new SimpleAIPlayer();
+                    players[0] = new AdvancedAIPlayer();
+                    players[1] = new AdvancedAIPlayer();
                 }
                 default -> {
                     System.out.println("Invalid mode. Returning to menu.");
@@ -89,7 +91,6 @@ public class UI {
                     break;
                 }
             }
-
             // End screen
             if (winner == 1 && BGE.currentPlayer == 0)
                 IO.printVictoryScreen(players[0].getPLAYER_NAME());
@@ -99,9 +100,11 @@ public class UI {
     }
     // Todo - match features with single player
     public static void playOnlineGame(int p, String ip) {
-        String serverAddress;
+        String serverAddress = "";
         if (ip == null)
-            serverAddress = IO.promptServerIP();
+            serverAddress = IO.getValidServerAddressOrQuit();
+        if (serverAddress == null)
+            return;
         else
             serverAddress = ip;
         int port;
@@ -125,6 +128,7 @@ public class UI {
             netUtils.connectToServer(Server.getExpectedCode(), name, board);
 
             while (netUtils.getWinner() == null) {
+                boolean turn;
                 if (netUtils.getTurn()) {
                     String input = IO.askForTargetCoordinate(DEFAULT_BOARD_SIZE, name);
                     if ("QUIT".equalsIgnoreCase(input)) {
@@ -133,11 +137,25 @@ public class UI {
                     }
                     int[] target =  IO.parseCoordinate(input, DEFAULT_BOARD_SIZE);
                     netUtils.sendShoot(target[0], target[1]);
+                    turn = true;
                 } else {
                     IO.printEnemyBanner(netUtils.getEnemyName());
+                    turn = false;
                 }
                 netUtils.receiveResult();
 
+                if (!turn)
+                    IO.printTargetLocation(netUtils.getShoot());
+                switch (netUtils.getHit()) {
+                    case 0 -> System.out.println("Miss");  // Missed shoot
+                    case 1 -> System.out.println("Hit");   // Hit
+                    case 2 -> { // Sunk enemy Ship
+                        IO.printShipSunkBanner();
+                    }
+                    case 3 -> { // Already shoot
+                        System.out.println("Already Shoot here");
+                    }
+                }
                 IO.printBoard(netUtils.getBoard(), DEFAULT_BOARD_SIZE);
             }
 

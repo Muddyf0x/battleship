@@ -1,4 +1,5 @@
 import java.io.File;
+import java.lang.annotation.Target;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Scanner;
@@ -40,20 +41,6 @@ public class IO {
 
         return new int[]{x, y};
     }
-
-    // Optionally, a helper method to read and parse input interactively
-    public static int[] readCoordinate(int boardSize) {
-        while (true) {
-            System.out.print("Enter coordinate (e.g., B7 or 7B): ");
-            String input = scanner.nextLine();
-
-            try {
-                return parseCoordinate(input, boardSize);
-            } catch (IllegalArgumentException e) {
-                System.out.println("Error: " + e.getMessage());
-            }
-        }
-    }
     public static void printWelcomeScreen() {
         System.out.println("""
        ____        _   _   _           _     _
@@ -77,9 +64,8 @@ public class IO {
     Please enter your player name. This will be used
     to identify you during the game.
 
-    ================================================ 
-    Enter your name:
-    """);
+    ================================================
+    Enter your name:""");
 
         Scanner scanner = new Scanner(System.in);
         String name;
@@ -96,12 +82,11 @@ public class IO {
 
     1) Singleplayer         - You vs The AI
     2) Local Multiplayer    - Play against an other Player on this PC
-    3) Online Multiplayer   - Play against an other Player over the Network 
+    3) Online Multiplayer   - Play against an other Player over the Network
     4) Quit                 - Exit the game
 
     =========================================================
-    Please enter a number [1-4] to select a mode:
-    """);
+    Please enter a number [1-4] to select a mode:""");
 
         Scanner scanner = new Scanner(System.in);
         while (true) {
@@ -124,14 +109,38 @@ public class IO {
             }
         }
     }
+    public static int promptDifficulty() {
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.println("================== DIFFICULTY SELECTION ==================\n");
+        System.out.println("    1) Easy    - Simple random AI");
+        System.out.println("    2) Medium  - Parity + Target AI");
+        System.out.println("=========================================================\n");
+        System.out.print("    Please enter a number [1-2] to select difficulty: ");
+
+        int choice;
+        while (true) {
+            if (scanner.hasNextInt()) {
+                choice = scanner.nextInt();
+                if (choice >= 1 && choice <= 2) {
+                    break;
+                }
+            } else {
+                scanner.next(); // consume invalid token
+            }
+            System.out.print("    Invalid input. Please enter [1-2]: ");
+        }
+
+        return choice;
+    }
     public static boolean askRemoteConnection() {
         System.out.println("""
     ================== CONNECTION SETUP ==================
 
-    Do you want to connect to a remote game server?
+    Do you want to start a game server on this maschine?
 
-    1) Yes - Enter IP and connect to remote host
-    2) No  - Start or join a local game on this machine
+    1) Yes
+    2) No  -  join a remote game
 
     ======================================================
     Please enter 1 or 2:
@@ -230,50 +239,7 @@ public class IO {
             }
         }
     }
-    public static void displayBoardsWithStats(int[][] yourBoard, int[][] enemyBoard, int yourHits, int enemyHits) {
-        System.out.printf("""
-                ================== BATTLEFIELD ==================
-                
-                Your Board (Hits: %d)         Enemy Board (Hits: %d)
-                %n""", yourHits, enemyHits);
 
-        // Column headers
-        System.out.print("   ");
-        for (int i = 1; i <= 10; i++) {
-            System.out.printf("%2d ", i);
-        }
-        System.out.print("       ");
-        for (int i = 1; i <= 10; i++) {
-            System.out.printf("%2d ", i);
-        }
-        System.out.println();
-
-        for (int row = 0; row < 10; row++) {
-            char rowLabel = (char) ('A' + row);
-            System.out.print(" " + rowLabel + " ");
-            for (int col = 0; col < 10; col++) {
-                System.out.print(symbolForCell(yourBoard[row][col]) + "  ");
-            }
-
-            System.out.print("    " + rowLabel + " ");
-            for (int col = 0; col < 10; col++) {
-                System.out.print(symbolForCell(enemyBoard[row][col]) + "  ");
-            }
-
-            System.out.println();
-        }
-
-        System.out.println("==================================================\n");
-    }
-
-    private static String symbolForCell(int cell) {
-        return switch (cell) {
-            case 0 -> "~";  // untouched
-            case 1 -> "o";  // miss
-            case 2 -> "X";  // hit
-            default -> "?";
-        };
-    }
     public static File askForCustomBoardFile() {
         System.out.println("""
     ============ SHIP PLACEMENT ============
@@ -326,16 +292,10 @@ public class IO {
       ---------------------------------------------
             All your ships have been sunk!
     """);
-        System.out.println("             *** " + name.toUpperCase() + " LOST! ***");
+        System.out.println("             *** " + name.toUpperCase() + " WINS! ***");
         System.out.println("""
       ---------------------------------------------
     """);
-    }
-
-    public static String promptServerIP() {
-        System.out.print("Enter host IP address: ");
-        Scanner scanner = new Scanner(System.in);
-        return scanner.nextLine().trim();
     }
 
     public static int promptPort() {
@@ -353,30 +313,20 @@ public class IO {
         }
     }
 
-    public static boolean promptHostOrJoin() {
-        Scanner scanner = new Scanner(System.in);
-        System.out.print("Type 'host' to host a game or 'join' to connect: ");
-        while (true) {
-            String input = scanner.nextLine().trim().toLowerCase();
-            if (input.equals("host")) {
-                return true;
-            }
-            if (input.equals("join")) {
-                return false;
-            }
-            System.out.print("Invalid choice. Type 'host' or 'join': ");
-        }
-    }
     public static void printShipSunkBanner() {
         System.out.println("""
-        ____  _     _     _   _           _    _  _  _ 
-       / ___|| |__ (_) __| |_| |__   ___ | | _| || || |
-       \\___ \\| '_ \\| |/ _` | __| '_ \\ / _ \\| |/ / || || |
-        ___) | | | | | (_| | |_| | | | (_) |   < |_||_||_|
-       |____/|_| |_|_|\\__,_|\\__|_| |_|\\___/|_|\\_\\(_)(_)(_)
        ---------------------------------------------------
                   YOU SUNK AN ENEMY SHIP!
        ---------------------------------------------------
     """);
+    }
+    public static void printTargetLocation(int[] target) {
+        char xChar = (char) ('A' + target[0]);
+        int y = target[1];
+        System.out.println("Target: " + xChar + y);
+    }
+    public static void printTargetLocation(int x, int y) {
+        char xChar = (char) ('A' + x);
+        System.out.println("Target: " + xChar + y);
     }
 }
