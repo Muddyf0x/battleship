@@ -353,16 +353,16 @@ public class IO {
         }
     }
 
-    public static String promptHostOrJoin() {
+    public static boolean promptHostOrJoin() {
         Scanner scanner = new Scanner(System.in);
         System.out.print("Type 'host' to host a game or 'join' to connect: ");
         while (true) {
             String input = scanner.nextLine().trim().toLowerCase();
             if (input.equals("host")) {
-                return "HOST";
+                return true;
             }
             if (input.equals("join")) {
-                return "JOIN";
+                return false;
             }
             System.out.print("Invalid choice. Type 'host' or 'join': ");
         }

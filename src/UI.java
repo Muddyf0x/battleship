@@ -5,6 +5,7 @@ public class UI {
     // Todo - remove unused code
     static final int DEFAULT_BOARD_SIZE = 10;
     static final String CODE_WORD = "letmein";
+    static final int DEFAULT_SERVER_PORT = 12345;
     static boolean host;
     public static void main(String[] args) {
         IO.printWelcomeScreen();
@@ -28,7 +29,11 @@ public class UI {
                 }
                 case 3 -> { // Network
                     // Todo - add option to start Server
-                    playOnlineGame();
+                    host = IO.promptHostOrJoin();
+                    if (host) {
+                        hostGame();
+                    } else
+                        playOnlineGame(0, null);
                     continue;
                 }
                 case 23071912 -> {
@@ -95,9 +100,18 @@ public class UI {
         }
     }
     // Todo - match features with single player
-    public static void playOnlineGame() {
-        String serverAddress = IO.promptServerIP();
-        int port = IO.promptPort();
+    public static void playOnlineGame(int p, String ip) {
+        String serverAddress;
+        if (ip == null)
+            serverAddress = IO.promptServerIP();
+        else
+            serverAddress = ip;
+        int port;
+        if (p == 0)
+            port = IO.promptPort();
+        else
+            port = p;
+
         String name = IO.promptPlayerName();
 
         try {
@@ -134,10 +148,29 @@ public class UI {
             else
                 IO.printDefeatScreen(netUtils.getEnemyName());
 
-            netUtils.endConnection();
+            netUtils.endConnection(); // Todo - implement end Connection
 
         } catch (IOException e) {
             System.out.println("Error during connection: " + e);
         }
+    }
+    public static void hostGame() {
+        Server server = new Server();
+        Thread serverThread = new Thread(() -> {
+            try {
+                Server.startServer(System.err);
+            } catch (IOException | InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
+        serverThread.start();
+        System.out.println("Server starting on port: " + Server.getDefaultPort());
+        try {
+            Thread.sleep(250);
+        } catch (InterruptedException e) {
+            System.out.println("Oh well, that happend");
+        }
+        playOnlineGame(Server.getDefaultPort(), "localhost");
+        server.stopServer();
     }
 }

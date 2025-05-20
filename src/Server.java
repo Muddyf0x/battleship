@@ -8,64 +8,86 @@ public class Server {
     private static final String EXPECTED_CODE = "letmein"; // code word to make sure only correct connections can be made
     static final int DEFAULT_BOARD_SIZE = 10;
 
+    private static ServerSocket serverSocket;
+    private static volatile boolean running = true;
+
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        ServerSocket serverSocket = new ServerSocket(PORT);
-        System.out.println("Server listening on port " + PORT);
+       startServer(System.out);
+    }
+
+    public static void startServer(PrintStream printout) throws IOException, InterruptedException {
+        serverSocket = new ServerSocket(PORT);
+        printout.println("Server listening on port " + PORT);
         // We'll hold exactly two handlers:
-        List<ClientHandler> players = Collections.synchronizedList(new ArrayList<>());
-        CountDownLatch readyLatch = new CountDownLatch(2);
+        while (running) {
+            List<ClientHandler> players = Collections.synchronizedList(new ArrayList<>());
+            CountDownLatch readyLatch = new CountDownLatch(2);
 
-        // Accept two connections
-        for (int i = 0; i < 2; i++) {
-            Socket clientSocket = serverSocket.accept();
-            ClientHandler handler = new ClientHandler(clientSocket, players, readyLatch);
-            players.add(handler);
-            new Thread(handler, "PlayerHandler-" + i).start();
-        }
-
-        // Wait until both have sent code, name & board
-        readyLatch.await();
-
-        System.out.println("Both players connected. Starting game setup.");
-
-        // Randomly pick who starts
-        int starterIdx = new Random().nextInt(2);
-
-        // Notify each player: the other name & whether they start
-        for (int i = 0; i < 2; i++) {
-            ClientHandler me = players.get(i);
-            ClientHandler other = players.get(1 - i);
-            boolean iStart = (i == starterIdx);
-            me.sendSetup(other.name, iStart);
-        }
-        // Start game engine
-        BGE.startGame(DEFAULT_BOARD_SIZE);
-        // set up boards
-        for (int i = 0; i < 2; i++) {
-            BGE.setBoard(players.get(i).getBoard(), i);
-        }
-        BGE.setCurrentPlayer(starterIdx);
-
-        // Enter turn loop
-        while (true) {
-            ClientHandler active = players.get(BGE.getCurrentPlayer());
-
-            int[] move = active.readMove();// blocking
-            int hit;
-
-            hit = BGE.shoot(move[0], move[1]);
-            String winner = null;
-            if (BGE.isWon() == 1) {
-                winner = active.name;
+            // Accept two connections
+            for (int i = 0; i < 2; i++) {
+                Socket clientSocket = serverSocket.accept();
+                ClientHandler handler = new ClientHandler(clientSocket, players, readyLatch, printout);
+                players.add(handler);
+                new Thread(handler, "PlayerHandler-" + i).start();
             }
 
-            // broadcast to both
-            String nextPlayer = players.get(BGE.getCurrentPlayer()).getName();
-            for (ClientHandler p : players) {
-                p.sendMove(nextPlayer, BGE.getBoard(hit != 0) , Arrays.toString(move), hit, winner);
+            // Wait until both have sent code, name & board
+            readyLatch.await();
+
+            printout.println("Both players connected. Starting game setup.");
+
+            // Randomly pick who starts
+            int starterIdx = new Random().nextInt(2);
+
+            // Notify each player: the other name & whether they start
+            for (int i = 0; i < 2; i++) {
+                ClientHandler me = players.get(i);
+                ClientHandler other = players.get(1 - i);
+                boolean iStart = (i == starterIdx);
+                me.sendSetup(other.name, iStart);
+            }
+            // Start game engine
+            BGE.startGame(DEFAULT_BOARD_SIZE);
+            // set up boards
+            for (int i = 0; i < 2; i++) {
+                BGE.setBoard(players.get(i).getBoard(), i);
+            }
+            BGE.setCurrentPlayer(starterIdx);
+
+            // Enter turn loop
+            while (running) {
+                ClientHandler active = players.get(BGE.getCurrentPlayer());
+
+                int[] move = active.readMove();// blocking
+                int hit;
+
+                hit = BGE.shoot(move[0], move[1]);
+                String winner = null;
+                if (BGE.isWon() == 1) {
+                    winner = active.name;
+                }
+
+                // broadcast to both
+                String nextPlayer = players.get(BGE.getCurrentPlayer()).getName();
+                for (ClientHandler p : players) {
+                    p.sendMove(nextPlayer, BGE.getBoard(hit != 0), Arrays.toString(move), hit, winner);
+                }
             }
         }
+    }
+    public void stopServer() {
+        running = false;
+        try {
+            if (serverSocket != null && !serverSocket.isClosed()) {
+                serverSocket.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    public static int getDefaultPort() {
+        return PORT;
     }
 
     private static class ClientHandler implements Runnable {
@@ -74,14 +96,16 @@ public class Server {
         private final CountDownLatch readyLatch;
         private DataInputStream in;
         private DataOutputStream out;
+        private PrintStream printout;
 
         String name;
         char[] board;
 
-        ClientHandler(Socket socket, List<ClientHandler> players, CountDownLatch readyLatch) {
+        ClientHandler(Socket socket, List<ClientHandler> players, CountDownLatch readyLatch, PrintStream printout) {
             this.socket = socket;
             this.players = players;
             this.readyLatch = readyLatch;
+            this.printout = printout;
         }
 
         @Override
@@ -105,7 +129,7 @@ public class Server {
                 String boardString = in.readUTF();
                 this.board = boardString.toCharArray();
 
-                System.out.println("Player connected: " + name + "  board=" + boardString);
+                printout.println("Player connected: " + name + "  board=" + boardString);
                 // signal ready
                 readyLatch.countDown();
 
