@@ -6,6 +6,7 @@ public class SimpleAIPlayer implements PlayerController {
     private final Random rand = new Random();
     private final Set<Integer> tried = new HashSet<>();
     private final String playerName;
+    private final int boardSize = BGE.getBoardSize();
 
     public SimpleAIPlayer() {
         String[] robotNames = {
@@ -16,13 +17,13 @@ public class SimpleAIPlayer implements PlayerController {
 
 
     @Override
-    public void setupBoard(char[] board, int boardSize) {
+    public void setupBoard(char[] board) {
         BGE.placeShipRandom(board);
     }
 
     @Override
-    public int[] getNextMove(char[] visibleBoard, int boardSize) {
-        IO.printEnemyBanner(this.getPLAYER_NAME());
+    public int[] getNextMove(char[] visibleBoard) {
+        IO.printEnemyBanner(this.getPlayerName());
         while (true) {
             int x = rand.nextInt(boardSize);
             int y = rand.nextInt(boardSize);
@@ -36,11 +37,12 @@ public class SimpleAIPlayer implements PlayerController {
 
     @Override
     public void notifyShotResult(int x, int y, boolean hit) {
+        IO.printTargetLocation(x, y);
         System.out.println(hit ? "Hit!" : "Miss!");
         // Could enhance logic
     }
     @Override
-    public String getPLAYER_NAME() {
+    public String getPlayerName() {
         return playerName;
     }
 }

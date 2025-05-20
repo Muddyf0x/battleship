@@ -1,15 +1,15 @@
 import java.io.File;
+import java.lang.annotation.Target;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Scanner;
 
 public class IO {
-    // Todo - look over class for unused or duplicate code
-    // Todo - write tests
     private static final Scanner scanner = new Scanner(System.in);
+    private static final int BOARD_SIZE = BGE.getBoardSize();
 
     // Converts inputs like "B7", "7B", "b7", etc. to int[2] = {x, y}
-    public static int[] parseCoordinate(String input, int boardSize) throws IllegalArgumentException {
+    public static int[] parseCoordinate(String input) throws IllegalArgumentException {
         input = input.trim().toUpperCase();
 
         Character letter = null;
@@ -34,25 +34,11 @@ public class IO {
         int x = letter - 'A';
         int y = Integer.parseInt(numberPart) - 1;
 
-        if (x < 0 || x >= boardSize || y < 0 || y >= boardSize) {
+        if (x < 0 || x >= BOARD_SIZE || y < 0 || y >= BOARD_SIZE) {
             throw new IllegalArgumentException("Coordinates out of board range.");
         }
 
         return new int[]{x, y};
-    }
-
-    // Optionally, a helper method to read and parse input interactively
-    public static int[] readCoordinate(int boardSize) {
-        while (true) {
-            System.out.print("Enter coordinate (e.g., B7 or 7B): ");
-            String input = scanner.nextLine();
-
-            try {
-                return parseCoordinate(input, boardSize);
-            } catch (IllegalArgumentException e) {
-                System.out.println("Error: " + e.getMessage());
-            }
-        }
     }
     public static void printWelcomeScreen() {
         System.out.println("""
@@ -71,17 +57,14 @@ public class IO {
     """);
     }
     public static String promptPlayerName() {
-        System.out.println("""
+        System.out.print("""
     ================== PLAYER SETUP ==================
 
     Please enter your player name. This will be used
     to identify you during the game.
 
-    ================================================ 
-    Enter your name:
-    """);
-
-        Scanner scanner = new Scanner(System.in);
+    ================================================
+    Enter your name: """);
         String name;
 
         while (true) {
@@ -91,28 +74,26 @@ public class IO {
         }
     }
     public static int showGameModeSelection() {
-        System.out.println("""
+        System.out.print("""
     ================== GAME MODE SELECTION ==================
 
     1) Singleplayer         - You vs The AI
     2) Local Multiplayer    - Play against an other Player on this PC
-    3) Online Multiplayer   - Play against an other Player over the Network 
+    3) Online Multiplayer   - Play against an other Player over the Network
     4) Quit                 - Exit the game
 
     =========================================================
-    Please enter a number [1-4] to select a mode:
-    """);
+    Please enter a number [1-4] to select a mode: """);
 
-        Scanner scanner = new Scanner(System.in);
         while (true) {
-            String input = scanner.nextLine().trim();
+            String input = scanner.nextLine().trim().toLowerCase();
             switch (input) {
                 case "1", "2", "3" -> {
                     int selected = Integer.parseInt(input);
                     System.out.println("You selected: " + getModeName(selected));
                     return selected;
                 }
-                case "5" -> {
+                case "4", "quit" -> {
                     System.out.println("Thanks for playing! Goodbye 👋");
                     System.exit(0);
                 }
@@ -120,24 +101,45 @@ public class IO {
                     System.out.println("How'd we get here?");
                     return Integer.parseInt(input);
                 }
-                default -> System.out.print("Invalid input. Please enter a number between 1 and 5: ");
+                default -> System.out.print("Invalid input. Please enter a number between 1 and 4: ");
             }
         }
+    }
+    public static int promptDifficulty() {
+
+        System.out.println("================== DIFFICULTY SELECTION ==================\n");
+        System.out.println("    1) Easy    - Simple random AI");
+        System.out.println("    2) Medium  - Parity + Target AI");
+        System.out.println("=========================================================\n");
+        System.out.print("Please enter a number [1-2] to select difficulty: ");
+
+        int choice;
+        while (true) {
+            if (scanner.hasNextInt()) {
+                choice = scanner.nextInt();
+                if (choice >= 1 && choice <= 2) {
+                    break;
+                }
+            } else {
+                scanner.next(); // consume invalid token
+            }
+            System.out.print("    Invalid input. Please enter [1-2]: ");
+        }
+
+        return choice;
     }
     public static boolean askRemoteConnection() {
         System.out.println("""
     ================== CONNECTION SETUP ==================
 
-    Do you want to connect to a remote game server?
+    Do you want to start a game server on this maschine?
 
-    1) Yes - Enter IP and connect to remote host
-    2) No  - Start or join a local game on this machine
+    1) Yes
+    2) No  -  join a remote game
 
     ======================================================
     Please enter 1 or 2:
     """);
-
-        Scanner scanner = new Scanner(System.in);
         while (true) {
             String input = scanner.nextLine().trim();
             if (input.equals("1")) return true;
@@ -156,7 +158,6 @@ public class IO {
     ==========================================================
     """);
 
-        Scanner scanner = new Scanner(System.in);
         while (true) {
             System.out.print("Server address: ");
             String input = scanner.nextLine().trim();
@@ -183,26 +184,26 @@ public class IO {
             default -> "Unknown";
         };
     }
-    public static void printBoard(char[] board, int boardSize) {
+    public static void printBoard(char[] board) {
         // Print top letters
         System.out.print("   ");
-        for (int x = 0; x < boardSize; x++) {
+        for (int x = 0; x < BOARD_SIZE; x++) {
             System.out.print((char) ('A' + x) + " ");
         }
         System.out.println();
 
-        for (int y = 0; y < boardSize; y++) {
+        for (int y = 0; y < BOARD_SIZE; y++) {
             // Print left-side number (row index)
             System.out.printf("%2d ", y + 1);
-            for (int x = 0; x < boardSize; x++) {
-                System.out.print(board[x + y * boardSize] + " ");
+            for (int x = 0; x < BOARD_SIZE; x++) {
+                System.out.print(board[x + y * BOARD_SIZE] + " ");
             }
             System.out.println();
         }
     }
 
 
-    public static String askForTargetCoordinate(int boardSize, String name) {
+    public static String askForTargetCoordinate(String name) {
         System.out.println("\n================== " + name.toUpperCase() + "'S TURN ==================\n");
         System.out.println("""
     Enter the coordinate to fire at.
@@ -211,10 +212,9 @@ public class IO {
     """);
 
         // Build valid letter range based on board size
-        char maxLetter = (char) ('A' + boardSize - 1);
-        String regex = "^[A-" + maxLetter + "]([1-9]|" + (boardSize >= 10 ? "10" : "") + ")$";
+        char maxLetter = (char) ('A' + BOARD_SIZE - 1);
+        String regex = "^[A-" + maxLetter + "]([1-9]|" + (BOARD_SIZE >= 10 ? "10" : "") + ")$";
 
-        Scanner scanner = new Scanner(System.in);
         while (true) {
             System.out.print("Target: ");
             String input = scanner.nextLine().trim().toUpperCase();
@@ -226,54 +226,11 @@ public class IO {
             if (input.matches(regex)) {
                 return input;
             } else {
-                System.out.println("Invalid input. Please enter a valid coordinate (A1–" + maxLetter + boardSize + ") or type 'quit'.");
+                System.out.println("Invalid input. Please enter a valid coordinate (A1–" + maxLetter + BOARD_SIZE + ") or type 'quit'.");
             }
         }
     }
-    public static void displayBoardsWithStats(int[][] yourBoard, int[][] enemyBoard, int yourHits, int enemyHits) {
-        System.out.printf("""
-                ================== BATTLEFIELD ==================
-                
-                Your Board (Hits: %d)         Enemy Board (Hits: %d)
-                %n""", yourHits, enemyHits);
 
-        // Column headers
-        System.out.print("   ");
-        for (int i = 1; i <= 10; i++) {
-            System.out.printf("%2d ", i);
-        }
-        System.out.print("       ");
-        for (int i = 1; i <= 10; i++) {
-            System.out.printf("%2d ", i);
-        }
-        System.out.println();
-
-        for (int row = 0; row < 10; row++) {
-            char rowLabel = (char) ('A' + row);
-            System.out.print(" " + rowLabel + " ");
-            for (int col = 0; col < 10; col++) {
-                System.out.print(symbolForCell(yourBoard[row][col]) + "  ");
-            }
-
-            System.out.print("    " + rowLabel + " ");
-            for (int col = 0; col < 10; col++) {
-                System.out.print(symbolForCell(enemyBoard[row][col]) + "  ");
-            }
-
-            System.out.println();
-        }
-
-        System.out.println("==================================================\n");
-    }
-
-    private static String symbolForCell(int cell) {
-        return switch (cell) {
-            case 0 -> "~";  // untouched
-            case 1 -> "o";  // miss
-            case 2 -> "X";  // hit
-            default -> "?";
-        };
-    }
     public static File askForCustomBoardFile() {
         System.out.println("""
     ============ SHIP PLACEMENT ============
@@ -285,7 +242,6 @@ public class IO {
     ========================================
     """);
 
-        Scanner scanner = new Scanner(System.in);
         while (true) {
             System.out.print("File path or 'no': ");
             String input = scanner.nextLine().trim();
@@ -326,16 +282,10 @@ public class IO {
       ---------------------------------------------
             All your ships have been sunk!
     """);
-        System.out.println("             *** " + name.toUpperCase() + " LOST! ***");
+        System.out.println("             *** " + name.toUpperCase() + " WINS! ***");
         System.out.println("""
       ---------------------------------------------
     """);
-    }
-
-    public static String promptServerIP() {
-        System.out.print("Enter host IP address: ");
-        Scanner scanner = new Scanner(System.in);
-        return scanner.nextLine().trim();
     }
 
     public static int promptPort() {
@@ -353,30 +303,20 @@ public class IO {
         }
     }
 
-    public static boolean promptHostOrJoin() {
-        Scanner scanner = new Scanner(System.in);
-        System.out.print("Type 'host' to host a game or 'join' to connect: ");
-        while (true) {
-            String input = scanner.nextLine().trim().toLowerCase();
-            if (input.equals("host")) {
-                return true;
-            }
-            if (input.equals("join")) {
-                return false;
-            }
-            System.out.print("Invalid choice. Type 'host' or 'join': ");
-        }
-    }
     public static void printShipSunkBanner() {
         System.out.println("""
-        ____  _     _     _   _           _    _  _  _ 
-       / ___|| |__ (_) __| |_| |__   ___ | | _| || || |
-       \\___ \\| '_ \\| |/ _` | __| '_ \\ / _ \\| |/ / || || |
-        ___) | | | | | (_| | |_| | | | (_) |   < |_||_||_|
-       |____/|_| |_|_|\\__,_|\\__|_| |_|\\___/|_|\\_\\(_)(_)(_)
        ---------------------------------------------------
                   YOU SUNK AN ENEMY SHIP!
        ---------------------------------------------------
     """);
+    }
+    public static void printTargetLocation(int[] target) {
+        char xChar = (char) ('A' + target[0]);
+        int y = target[1];
+        System.out.println("Target: " + xChar + y);
+    }
+    public static void printTargetLocation(int x, int y) {
+        char xChar = (char) ('A' + x);
+        System.out.println("Target: " + xChar + y);
     }
 }

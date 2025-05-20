@@ -4,16 +4,16 @@ import java.util.*;
 import java.util.concurrent.CountDownLatch;
 
 public class Server {
-    private static final int PORT = 12345;
-    private static final String EXPECTED_CODE = "letmein"; // code word to make sure only correct connections can be made
-    static final int DEFAULT_BOARD_SIZE = 10;
+    private static final int PORT = 12345;                      // Default port
+    private static final String EXPECTED_CODE = "letmein";      // code word to make sure only correct connections can be made
+    static final int DEFAULT_BOARD_SIZE = BGE.getBoardSize();
 
     private static ServerSocket serverSocket;
     private static volatile boolean running = true;
 
-
+    // start server in standalone mode
     public static void main(String[] args) throws IOException, InterruptedException {
-       startServer(System.out);
+       startServer(System.out); // Use normal System.out for Standalone mode
     }
 
     public static void startServer(PrintStream printout) throws IOException, InterruptedException {
@@ -57,6 +57,7 @@ public class Server {
 
             // Enter turn loop
             while (running) {
+                // nearly the same Game loop as in the normal UI
                 ClientHandler active = players.get(BGE.getCurrentPlayer());
 
                 int[] move = active.readMove();// blocking
@@ -86,6 +87,7 @@ public class Server {
             e.printStackTrace();
         }
     }
+
     public static int getDefaultPort() {
         return PORT;
     }
@@ -99,7 +101,7 @@ public class Server {
         private final CountDownLatch readyLatch;
         private DataInputStream in;
         private DataOutputStream out;
-        private PrintStream printout;
+        private final PrintStream printout;
 
         String name;
         char[] board;

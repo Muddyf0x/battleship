@@ -2,41 +2,47 @@ import java.io.File;
 import java.io.IOException;
 
 public class UI {
-    // Todo - remove unused code
-    static final int DEFAULT_BOARD_SIZE = 10;
-    static boolean host;
+    static final int DEFAULT_BOARD_SIZE = BGE.getBoardSize();   // Get the board size form the Game engine
+    static boolean host;                                        // keep track of the host for games over the network
+
     public static void main(String[] args) {
         IO.printWelcomeScreen();
+        final int ATBDAY = 23071912;
 
-        while (true) {
+        gameLoop: while (true) {
             int gameMode = IO.showGameModeSelection(); // 1 = PvE, 2 = PvP, 3 = Network
             int winner = 0;
             // Start Game engine
-            BGE.startGame(DEFAULT_BOARD_SIZE);
+            BGE.startGame();
             PlayerController[] players = new PlayerController[2];
 
             // Select player types based on gameMode
             switch (gameMode) {
                 case 1 -> { // PvE
                     players[0] = new LocalHumanPlayer();
-                    players[1] = new SimpleAIPlayer();
+                    if (IO.promptDifficulty() == 1)
+                        players[1] = new SimpleAIPlayer();
+                    else
+                        players[1] = new AdvancedAIPlayer();
                 }
                 case 2 -> { // Local PvP
                     players[0] = new LocalHumanPlayer();
                     players[1] = new LocalHumanPlayer();
                 }
                 case 3 -> { // Network
-                    // Todo - add option to start Server
-                    host = IO.promptHostOrJoin();
+                    host = IO.askRemoteConnection();
                     if (host) {
                         hostGame();
                     } else
                         playOnlineGame(0, null);
                     continue;
                 }
-                case 23071912 -> {
-                    players[0] = new SimpleAIPlayer();
-                    players[1] = new SimpleAIPlayer();
+                case 4 -> {
+                    break gameLoop;
+                }
+                case ATBDAY -> {
+                    players[0] = new AdvancedAIPlayer();
+                    players[1] = new AdvancedAIPlayer();
                 }
                 default -> {
                     System.out.println("Invalid mode. Returning to menu.");
@@ -46,7 +52,7 @@ public class UI {
 
             // Setup boards
             for (int i = 0; i < 2; i++) {
-                players[i].setupBoard(BGE.boards[i], DEFAULT_BOARD_SIZE);
+                players[i].setupBoard(BGE.boards[i]);
             }
             boolean hit = true;
             // Game loop
@@ -57,7 +63,7 @@ public class UI {
                 PlayerController currentPlayer = players[current];
                 char[] visibleEnemyBoard = BGE.getBoard(hit);
 
-                int[] move = currentPlayer.getNextMove(visibleEnemyBoard, DEFAULT_BOARD_SIZE);
+                int[] move = currentPlayer.getNextMove(visibleEnemyBoard);
                 if (move == null) {
                     System.out.println("Player " + current + " quit.");
                     break;
@@ -78,7 +84,7 @@ public class UI {
                 }
                 currentPlayer.notifyShotResult(move[0], move[1], hit);
 
-                IO.printBoard(BGE.getBoard(hit), DEFAULT_BOARD_SIZE);
+                IO.printBoard(BGE.getBoard(hit));
 
                 int result = BGE.isWon();
                 if (result == 1) {
@@ -89,19 +95,19 @@ public class UI {
                     break;
                 }
             }
-
             // End screen
             if (winner == 1 && BGE.currentPlayer == 0)
-                IO.printVictoryScreen(players[0].getPLAYER_NAME());
+                IO.printVictoryScreen(players[0].getPlayerName());
             else
-                IO.printDefeatScreen(players[0].getPLAYER_NAME());
+                IO.printDefeatScreen(players[1].getPlayerName());
         }
     }
-    // Todo - match features with single player
     public static void playOnlineGame(int p, String ip) {
-        String serverAddress;
+        String serverAddress = "";
         if (ip == null)
-            serverAddress = IO.promptServerIP();
+            serverAddress = IO.getValidServerAddressOrQuit();
+        if (serverAddress == null)
+            return;
         else
             serverAddress = ip;
         int port;
@@ -125,20 +131,35 @@ public class UI {
             netUtils.connectToServer(Server.getExpectedCode(), name, board);
 
             while (netUtils.getWinner() == null) {
+                boolean turn;
                 if (netUtils.getTurn()) {
-                    String input = IO.askForTargetCoordinate(DEFAULT_BOARD_SIZE, name);
+                    String input = IO.askForTargetCoordinate(name);
                     if ("QUIT".equalsIgnoreCase(input)) {
                         netUtils.endConnection();
                         return;
                     }
-                    int[] target =  IO.parseCoordinate(input, DEFAULT_BOARD_SIZE);
+                    int[] target =  IO.parseCoordinate(input);
                     netUtils.sendShoot(target[0], target[1]);
+                    turn = true;
                 } else {
                     IO.printEnemyBanner(netUtils.getEnemyName());
+                    turn = false;
                 }
                 netUtils.receiveResult();
 
-                IO.printBoard(netUtils.getBoard(), DEFAULT_BOARD_SIZE);
+                if (!turn)
+                    IO.printTargetLocation(netUtils.getShoot());
+                switch (netUtils.getHit()) {
+                    case 0 -> System.out.println("Miss");  // Missed shoot
+                    case 1 -> System.out.println("Hit");   // Hit
+                    case 2 -> { // Sunk enemy Ship
+                        IO.printShipSunkBanner();
+                    }
+                    case 3 -> { // Already shoot
+                        System.out.println("Already Shoot here");
+                    }
+                }
+                IO.printBoard(netUtils.getBoard());
             }
 
             if (netUtils.getWinner().equalsIgnoreCase(name))
@@ -146,7 +167,7 @@ public class UI {
             else
                 IO.printDefeatScreen(netUtils.getEnemyName());
 
-            netUtils.endConnection(); // Todo - implement end Connection
+            netUtils.endConnection();
 
         } catch (IOException e) {
             System.out.println("Error during connection: " + e);
