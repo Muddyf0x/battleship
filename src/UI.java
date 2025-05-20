@@ -4,8 +4,6 @@ import java.io.IOException;
 public class UI {
     // Todo - remove unused code
     static final int DEFAULT_BOARD_SIZE = 10;
-    static final String CODE_WORD = "letmein";
-    static final int DEFAULT_SERVER_PORT = 12345;
     static boolean host;
     public static void main(String[] args) {
         IO.printWelcomeScreen();
@@ -124,7 +122,7 @@ public class UI {
                 BGE.placeShipRandom(board);
             }
 
-            netUtils.connectToServer(CODE_WORD, name, board);
+            netUtils.connectToServer(Server.getExpectedCode(), name, board);
 
             while (netUtils.getWinner() == null) {
                 if (netUtils.getTurn()) {

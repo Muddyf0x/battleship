@@ -89,6 +89,9 @@ public class Server {
     public static int getDefaultPort() {
         return PORT;
     }
+    public static String getExpectedCode() {
+        return EXPECTED_CODE;
+    }
 
     private static class ClientHandler implements Runnable {
         private final Socket socket;

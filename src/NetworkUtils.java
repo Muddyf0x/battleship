@@ -7,9 +7,8 @@ class NetworkUtils {
     final String SERVER_ADRESSE;
     final int PORT;
 
-    private Socket socket;
-    private DataInputStream in;
-    private DataOutputStream out;
+    private final DataInputStream in;
+    private final DataOutputStream out;
 
     private String EnemyName;
 
@@ -25,7 +24,7 @@ class NetworkUtils {
         this.PORT = port;
         this.winner = null;
 
-        socket = new Socket(SERVER_ADRESSE, PORT);
+        Socket socket = new Socket(SERVER_ADRESSE, PORT);
         in  = new DataInputStream(socket.getInputStream());
         out = new DataOutputStream(socket.getOutputStream());
     }
@@ -59,21 +58,21 @@ class NetworkUtils {
         String playerName = in.readUTF();
         turn = !playerName.equals(getEnemyName()); // set turn
 
-        // 3) board state
+        // 3) State of board that just got shoot at
         board = in.readUTF().toCharArray();
 
-        // 4) the move (always present)
+        // 4) The last shoot
         String move = in.readUTF();
-        shoot = parseCoords(move);
+        shoot = parseCoords(move); // converted to In[] -> {x, y}
 
-        // 5) hit count
+        // 5) hit count numbers according to the BGE
         hit = in.readInt();
 
         // 6) optional winner
-        String winner = null;
-        if (in.readBoolean()) {
-            winner = in.readUTF();
-        }
+        if (in.readBoolean()) {     // Boolean indicates if there is a winner
+            winner = in.readUTF();  // Read name of winner
+        } else
+            winner = null;
     }
     public static int[] parseCoords(String s) {
         // e.g. s = "[3, 5]"
