@@ -22,7 +22,7 @@ public class SimpleAIPlayer implements PlayerController {
 
     @Override
     public int[] getNextMove(char[] visibleBoard, int boardSize) {
-        IO.printAIBanner(this.getPlayerName());
+        IO.printEnemyBanner(this.getPLAYER_NAME());
         while (true) {
             int x = rand.nextInt(boardSize);
             int y = rand.nextInt(boardSize);
@@ -40,7 +40,7 @@ public class SimpleAIPlayer implements PlayerController {
         // Could enhance logic
     }
     @Override
-    public String getPlayerName() {
+    public String getPLAYER_NAME() {
         return playerName;
     }
 }

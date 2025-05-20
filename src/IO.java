@@ -4,6 +4,8 @@ import java.net.UnknownHostException;
 import java.util.Scanner;
 
 public class IO {
+    // Todo - look over class for unused or duplicate code
+    // Todo - write tests
     private static final Scanner scanner = new Scanner(System.in);
 
     // Converts inputs like "B7", "7B", "b7", etc. to int[2] = {x, y}
@@ -300,7 +302,7 @@ public class IO {
             }
         }
     }
-    public static void printAIBanner(String name) {
+    public static void printEnemyBanner(String name) {
         System.out.println("""
     ============================================
                 ENEMY TURN (""" + name.toUpperCase() + ")"
@@ -351,18 +353,30 @@ public class IO {
         }
     }
 
-    public static String promptHostOrJoin() {
+    public static boolean promptHostOrJoin() {
         Scanner scanner = new Scanner(System.in);
         System.out.print("Type 'host' to host a game or 'join' to connect: ");
         while (true) {
             String input = scanner.nextLine().trim().toLowerCase();
             if (input.equals("host")) {
-                return "HOST";
+                return true;
             }
             if (input.equals("join")) {
-                return "JOIN";
+                return false;
             }
             System.out.print("Invalid choice. Type 'host' or 'join': ");
         }
+    }
+    public static void printShipSunkBanner() {
+        System.out.println("""
+        ____  _     _     _   _           _    _  _  _ 
+       / ___|| |__ (_) __| |_| |__   ___ | | _| || || |
+       \\___ \\| '_ \\| |/ _` | __| '_ \\ / _ \\| |/ / || || |
+        ___) | | | | | (_| | |_| | | | (_) |   < |_||_||_|
+       |____/|_| |_|_|\\__,_|\\__|_| |_|\\___/|_|\\_\\(_)(_)(_)
+       ---------------------------------------------------
+                  YOU SUNK AN ENEMY SHIP!
+       ---------------------------------------------------
+    """);
     }
 }

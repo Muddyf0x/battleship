@@ -1,17 +1,18 @@
+import java.io.File;
 import java.io.IOException;
-import java.net.Socket;
 
 public class UI {
+    // Todo - remove unused code
+    static final int DEFAULT_BOARD_SIZE = 10;
     static boolean host;
     public static void main(String[] args) {
         IO.printWelcomeScreen();
 
         while (true) {
             int gameMode = IO.showGameModeSelection(); // 1 = PvE, 2 = PvP, 3 = Network
-            int boardSize = 10;
             int winner = 0;
-
-            BGE.startGame(boardSize);
+            // Start Game engine
+            BGE.startGame(DEFAULT_BOARD_SIZE);
             PlayerController[] players = new PlayerController[2];
 
             // Select player types based on gameMode
@@ -25,39 +26,13 @@ public class UI {
                     players[1] = new LocalHumanPlayer();
                 }
                 case 3 -> { // Network
-                    try {
-                        int port       = IO.promptPort();
-                        host   = IO.promptHostOrJoin().equals("HOST");
-                        Socket socket;
-                        if (host) {
-                            Server ns = new Server(port);
-                            System.out.println("Waiting for opponent…");
-                            socket = ns.waitForClient();
-                        } else {
-                            String ip = IO.promptServerIP();
-                            socket = new Socket(ip, port);
-                        }
-                        players[0] = new LocalHumanPlayer();
-                        players[1] = new NetworkPlayer(socket);
-                        /*
-                        // 1) Prompt *this* player once for their board:
-                        LocalHumanPlayer local = new LocalHumanPlayer();
-                        local.setupBoard(BGE.boards[0], boardSize);
-
-                        // 2) Exchange so each side ends up with the other board:
-                        NetworkUtils.exchangeBoards(socket,
-                                BGE.boards[0],  // my board
-                                BGE.boards[1],  // their board
-                                boardSize,
-                                host);
-                        // 3) Set controllers for the game loop:
-                        players[0] = local;                       // local moves
-                        players[1] = new NetworkPlayer(socket);   // remote moves
-
-                         */
-                    } catch (IOException e) {
-
-                    }
+                    // Todo - add option to start Server
+                    host = IO.promptHostOrJoin();
+                    if (host) {
+                        hostGame();
+                    } else
+                        playOnlineGame(0, null);
+                    continue;
                 }
                 case 23071912 -> {
                     players[0] = new SimpleAIPlayer();
@@ -71,26 +46,39 @@ public class UI {
 
             // Setup boards
             for (int i = 0; i < 2; i++) {
-                players[i].setupBoard(BGE.boards[i], boardSize);
+                players[i].setupBoard(BGE.boards[i], DEFAULT_BOARD_SIZE);
             }
-
+            boolean hit = true;
             // Game loop
             while (true) {
-                int current = BGE.currentPlayer;
+
+                int current = BGE.getCurrentPlayer();
 
                 PlayerController currentPlayer = players[current];
-                char[] visibleEnemyBoard = BGE.getBoard();
+                char[] visibleEnemyBoard = BGE.getBoard(hit);
 
-                int[] move = currentPlayer.getNextMove(visibleEnemyBoard, boardSize);
+                int[] move = currentPlayer.getNextMove(visibleEnemyBoard, DEFAULT_BOARD_SIZE);
                 if (move == null) {
                     System.out.println("Player " + current + " quit.");
                     break;
                 }
 
-                boolean hit = BGE.shoot(move[0], move[1]);
+
+                switch (BGE.shoot(move[0], move[1])) {
+                    case 0 -> hit = false;  // Missed shoot
+                    case 1 -> hit = true;   // Hit
+                    case 2 -> { // Sunk enemy Ship
+                        IO.printShipSunkBanner();
+                        hit = true;
+                    }
+                    case 3 -> { // Already shoot
+                        System.out.println("Already Shoot here");
+                        hit = true;
+                    }
+                }
                 currentPlayer.notifyShotResult(move[0], move[1], hit);
 
-                IO.printBoard(BGE.getBoard(), boardSize);
+                IO.printBoard(BGE.getBoard(hit), DEFAULT_BOARD_SIZE);
 
                 int result = BGE.isWon();
                 if (result == 1) {
@@ -100,17 +88,87 @@ public class UI {
                     winner = 2;
                     break;
                 }
-
-                if (!hit) {
-                    BGE.nextPlayer();
-                }
             }
 
             // End screen
             if (winner == 1 && BGE.currentPlayer == 0)
-                IO.printVictoryScreen(players[0].getPlayerName());
+                IO.printVictoryScreen(players[0].getPLAYER_NAME());
             else
-                IO.printDefeatScreen(players[0].getPlayerName());
+                IO.printDefeatScreen(players[0].getPLAYER_NAME());
         }
+    }
+    // Todo - match features with single player
+    public static void playOnlineGame(int p, String ip) {
+        String serverAddress;
+        if (ip == null)
+            serverAddress = IO.promptServerIP();
+        else
+            serverAddress = ip;
+        int port;
+        if (p == 0)
+            port = IO.promptPort();
+        else
+            port = p;
+
+        String name = IO.promptPlayerName();
+
+        try {
+            NetworkUtils netUtils = new NetworkUtils(serverAddress, port);
+            char[] board = new char[DEFAULT_BOARD_SIZE * DEFAULT_BOARD_SIZE];
+            File shipFile = IO.askForCustomBoardFile();
+            if (shipFile != null) {
+                BGE.placeShipFromFile(shipFile, board);
+            } else {
+                BGE.placeShipRandom(board);
+            }
+
+            netUtils.connectToServer(Server.getExpectedCode(), name, board);
+
+            while (netUtils.getWinner() == null) {
+                if (netUtils.getTurn()) {
+                    String input = IO.askForTargetCoordinate(DEFAULT_BOARD_SIZE, name);
+                    if ("QUIT".equalsIgnoreCase(input)) {
+                        netUtils.endConnection();
+                        return;
+                    }
+                    int[] target =  IO.parseCoordinate(input, DEFAULT_BOARD_SIZE);
+                    netUtils.sendShoot(target[0], target[1]);
+                } else {
+                    IO.printEnemyBanner(netUtils.getEnemyName());
+                }
+                netUtils.receiveResult();
+
+                IO.printBoard(netUtils.getBoard(), DEFAULT_BOARD_SIZE);
+            }
+
+            if (netUtils.getWinner().equalsIgnoreCase(name))
+                IO.printVictoryScreen(name);
+            else
+                IO.printDefeatScreen(netUtils.getEnemyName());
+
+            netUtils.endConnection(); // Todo - implement end Connection
+
+        } catch (IOException e) {
+            System.out.println("Error during connection: " + e);
+        }
+    }
+    public static void hostGame() {
+        Server server = new Server();
+        Thread serverThread = new Thread(() -> {
+            try {
+                Server.startServer(System.err);
+            } catch (IOException | InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
+        serverThread.start();
+        System.out.println("Server starting on port: " + Server.getDefaultPort());
+        try {
+            Thread.sleep(250);
+        } catch (InterruptedException e) {
+            System.out.println("Oh well, that happend");
+        }
+        playOnlineGame(Server.getDefaultPort(), "localhost");
+        server.stopServer();
     }
 }

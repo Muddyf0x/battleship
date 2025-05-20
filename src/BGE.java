@@ -2,10 +2,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class BGE {
     private static final int[] SHIP_SIZE = {5, 4, 3, 3, 2};
@@ -13,7 +10,6 @@ public class BGE {
     static final char SHIP = 'S';
     static final char HIT = 'X';
     static final char MISS = 'O';
-
 
     static int boardSize = 10;
     static char[][] boards = new char[2][];
@@ -87,6 +83,10 @@ public class BGE {
             throw new RuntimeException("Failed to read ship placement file: " + e.getMessage());
         }
     }
+    public static void setBoard(char[] board, int player) throws IllegalArgumentException{
+        if (isValidBoard(board))
+            boards[player] = board;
+    }
     // Verify Board - Start
     public static boolean isValidBoard(char[] board) {
         // Tracks visited ship cells
@@ -153,7 +153,6 @@ public class BGE {
             cy += dy;
             length++;
         }
-
         return length;
     }
     // Verify Board end
@@ -211,7 +210,6 @@ public class BGE {
                 }
             }
         }
-
         return true;
     }
 
@@ -230,7 +228,7 @@ public class BGE {
     }
     // Place ships Random - End
 
-    public static boolean shoot(int x, int y) {
+    public static int shoot(int x, int y) {
         // Determine opponent board
         int opponentId = (currentPlayer + 1) % 2;
         char[] targetBoard = boards[opponentId];
@@ -245,18 +243,25 @@ public class BGE {
         // Evaluate tile and apply change
         if (targetBoard[index] == SHIP) {
             targetBoard[index] = HIT;
-            return true;
+            if (checkAndMarkSunk(targetBoard, x, y))
+                return 2;
+            return 1;
         } else if (targetBoard[index] == WATER) {
             targetBoard[index] = MISS;
-            return false;
+            nextPlayer();
+            return 0;
         }
 
         // Already shot here (HIT or MISS) – no change
-        return false;
+        return 3;
     }
-    public static char[] getBoard() {
+    public static char[] getBoard(boolean hit) {
         // Get opponent's board (the one the current player is shooting at)
-        int opponentId = (currentPlayer + 1) % 2;
+        int opponentId;
+        if (hit)
+            opponentId = (currentPlayer + 1) % 2;
+        else
+            opponentId = currentPlayer;
         char[] board = boards[opponentId];
 
         // Return a masked copy where unhit ships are hidden
@@ -294,8 +299,86 @@ public class BGE {
         }
         return false;
     }
+    public static void setCurrentPlayer(int player) {
+        currentPlayer = player;
+    }
     public static void nextPlayer() {
         currentPlayer = (currentPlayer + 1) % 2;
+    }
+    public static int getCurrentPlayer() {
+        return currentPlayer;
+    }
+
+    /**
+     * After a hit at (x,y), check if that ship is now fully sunk.
+     * If so, mark all surrounding water cells as MISS.
+     *
+     * @param board  the opponent's board array (flat, length = boardSize*boardSize)
+     * @param x      column index of the recent hit
+     * @param y      row index of the recent hit
+     * @return true if the ship got sunk by this hit; false otherwise
+     */
+    public static boolean checkAndMarkSunk(char[] board, int x, int y) {
+        // Directions for up/down/left/right
+        final int[][] ortho = {{1,0},{-1,0},{0,1},{0,-1}};
+        // Directions for full 8‐neighborhood
+        final int[][] allDir = {
+                {-1,-1}, {-1,0}, {-1,1},
+                { 0,-1},         { 0,1},
+                { 1,-1}, { 1,0}, { 1,1}
+        };
+        int idxStart = y * boardSize + x;
+        if (board[idxStart] != HIT) {
+            // nothing to do if it's not a hit
+            return false;
+        }
+
+        // 1) Flood‐fill to collect the entire ship (SHIP or HIT)
+        boolean[][] seen = new boolean[boardSize][boardSize];
+        List<int[]> shipCells = new ArrayList<>();
+        Deque<int[]> stack = new ArrayDeque<>();
+        stack.push(new int[]{x,y});
+        seen[y][x] = true;
+
+        while (!stack.isEmpty()) {
+            int[] cur = stack.pop();
+            shipCells.add(cur);
+            for (int[] d : ortho) {
+                int nx = cur[0] + d[0], ny = cur[1] + d[1];
+                if (nx >= 0 && ny >= 0 && nx < boardSize && ny < boardSize
+                        && !seen[ny][nx]) {
+                    char c = board[ny * boardSize + nx];
+                    if (c == SHIP || c == HIT) {
+                        seen[ny][nx] = true;
+                        stack.push(new int[]{nx, ny});
+                    }
+                }
+            }
+        }
+
+        // 2) Check if any part is still un‐hit
+        for (int[] cell : shipCells) {
+            int cx = cell[0], cy = cell[1];
+            if (board[cy * boardSize + cx] == SHIP) {
+                return false;  // not fully sunk yet
+            }
+        }
+
+        // 3) It's sunk!  Surround it by marking all adjacent WATER cells as MISS
+        for (int[] cell : shipCells) {
+            int cx = cell[0], cy = cell[1];
+            for (int[] d : allDir) {
+                int nx = cx + d[0], ny = cy + d[1];
+                if (nx >= 0 && ny >= 0 && nx < boardSize && ny < boardSize) {
+                    int ni = ny * boardSize + nx;
+                    if (board[ni] == WATER) {
+                        board[ni] = MISS;
+                    }
+                }
+            }
+        }
+
+        return true;
     }
 
     // Tests
@@ -347,9 +430,12 @@ public class BGE {
                 '~', '~', '~', '~', '~', '~', '~', '~', '~', '~'
         };
         boards[0] = referenceBoard;
-        if (shoot(0, 0))
+        if (shoot(0, 0) != 0)
             test = false;
-        if (!shoot(5, 0))
+        currentPlayer = 1; // set Player back to one as only one board is set
+        if (shoot(5, 0) != 1)
+            test = false;
+        if (shoot(5, 0) != 3)
             test = false;
         if (test) {
             System.out.println("Test passed - testShoot");
@@ -399,6 +485,7 @@ public class BGE {
             return false;
     }
     private static boolean testGetBoard() {
+        // Board That should be displayed
         char[] referenceBoard = {
                 'O', '~', '~', '~', '~', '~', '~', '~', '~', '~',
                 '~', '~', '~', '~', '~', '~', '~', '~', '~', '~',
@@ -411,6 +498,7 @@ public class BGE {
                 '~', '~', '~', '~', '~', '~', 'X', '~', 'X', '~',
                 '~', '~', '~', '~', '~', '~', '~', '~', '~', 'O'
         };
+        // current Game Board
         char[] referenceBoard0 = {
                 'O', '~', '~', '~', '~', 'S', '~', '~', '~', '~',
                 '~', '~', '~', 'S', '~', 'S', '~', '~', '~', '~',
@@ -426,12 +514,43 @@ public class BGE {
         boards[0] = referenceBoard0;
         currentPlayer = 1;
 
-        if (Arrays.equals(getBoard(), referenceBoard)) {
+        if (Arrays.equals(getBoard(true), referenceBoard)) {
             System.out.println("Test passed - testGetBoard");
             return true;
         } else
             return false;
-
+    }
+    private static boolean testMarkSunk() {
+        char[] referenceBoard = {
+                'O', '~', '~', '~', '~', 'S', '~', '~', '~', '~',
+                '~', '~', '~', 'S', '~', 'S', '~', '~', '~', '~',
+                '~', '~', '~', 'X', '~', 'S', '~', '~', '~', '~',
+                '~', '~', '~', 'X', '~', '~', '~', '~', '~', '~',
+                '~', '~', '~', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', 'X', '~', '~', '~', 'S', 'S', '~', '~',
+                '~', '~', 'X', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', 'X', '~', '~', '~', '~', '~', '~', '~',
+                '~', '~', 'X', '~', '~', 'S', 'X', 'S', 'X', 'S',
+                '~', '~', '~', '~', '~', '~', '~', '~', '~', 'O'
+        };
+        char[] referenceBoard0 = {
+                'O', '~', '~', '~', '~', 'S', '~', '~', '~', '~',
+                '~', '~', '~', 'S', '~', 'S', '~', '~', '~', '~',
+                '~', '~', '~', 'X', '~', 'S', '~', '~', '~', '~',
+                '~', '~', '~', 'X', '~', '~', '~', '~', '~', '~',
+                '~', 'O', 'O', 'O', '~', '~', '~', '~', '~', '~',
+                '~', 'O', 'X', 'O', '~', '~', 'S', 'S', '~', '~',
+                '~', 'O', 'X', 'O', '~', '~', '~', '~', '~', '~',
+                '~', 'O', 'X', 'O', '~', '~', '~', '~', '~', '~',
+                '~', 'O', 'X', 'O', '~', 'S', 'X', 'S', 'X', 'S',
+                '~', 'O', 'O', 'O', '~', '~', '~', '~', '~', 'O'
+        };
+        checkAndMarkSunk(referenceBoard, 2, 6);
+        if (Arrays.equals(referenceBoard, referenceBoard0)) {
+            System.out.println("Test passed - checkAndMarkSunk");
+            return true;
+        } else
+            return false;
     }
     // Run Tests
     public static void main(String[] args) {
@@ -445,6 +564,8 @@ public class BGE {
         if (!testIsWon())
             failedTests++;
         if (!testGetBoard())
+            failedTests++;
+        if (!testMarkSunk())
             failedTests++;
 
         if (failedTests == 0)

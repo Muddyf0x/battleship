@@ -29,7 +29,7 @@ public class LocalHumanPlayer implements PlayerController {
         System.out.println(hit ? "Hit!" : "Miss!");
     }
     @Override
-    public String getPlayerName() {
+    public String getPLAYER_NAME() {
         return playerName;
     }
 }
