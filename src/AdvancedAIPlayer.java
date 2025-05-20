@@ -5,7 +5,7 @@ public class AdvancedAIPlayer implements PlayerController {
     private final Set<Integer> tried = new HashSet<>();
     private final Deque<int[]> targets = new ArrayDeque<>();
     private final String playerName;
-    private int boardSize;
+    private final int boardSize = BGE.getBoardSize();
 
     public AdvancedAIPlayer() {
         String[] robotNames = {
@@ -15,14 +15,13 @@ public class AdvancedAIPlayer implements PlayerController {
     }
 
     @Override
-    public void setupBoard(char[] board, int boardSize) {
-        this.boardSize = boardSize;
+    public void setupBoard(char[] board) {
         BGE.placeShipRandom(board);
     }
 
     @Override
-    public int[] getNextMove(char[] visibleBoard, int boardSize) {
-        IO.printEnemyBanner(this.getPLAYER_NAME());
+    public int[] getNextMove(char[] visibleBoard) {
+        IO.printEnemyBanner(this.getPlayerName());
 
         // --- Advanced Logic Begins Here ---
         while (!targets.isEmpty()) {
@@ -63,7 +62,7 @@ public class AdvancedAIPlayer implements PlayerController {
     }
 
     @Override
-    public String getPLAYER_NAME() {
+    public String getPlayerName() {
         return playerName;
     }
 

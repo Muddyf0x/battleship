@@ -5,52 +5,44 @@ import java.io.IOException;
 import java.util.*;
 
 public class BGE {
-    private static final int[] SHIP_SIZE = {5, 4, 3, 3, 2};
+    // Base information for the board/game
+    private static final int[] SHIP_SIZE = {5, 4, 3, 3, 2}; // number and size of ships
+    // char for the different tiles
     static final char WATER = '~';
     static final char SHIP = 'S';
     static final char HIT = 'X';
     static final char MISS = 'O';
 
-    static int boardSize = 10;
-    static char[][] boards = new char[2][];
-    static int currentPlayer;
+    static int boardSize = 10;              // Size can be changed here
+    static char[][] boards = new char[2][]; // store the boards
+    static int currentPlayer;               // Keep track of the current Player
+    // Keep track if the game is ready i.e. both boards have ships
     static boolean boardSet;
     static boolean gameReady;
-
+    // start game with Default board size
     public static void startGame() {
-        startGame(10);
+        startGame(boardSize);
     }
-
+    // Start Game with boardsize size
     public static void startGame(int size) {
+        // set readys to false
         boardSet = false;
         gameReady = false;
+        // set board size
         boardSize = size;
+        // Initialize both boards to water
+
         boards[0] = new char[boardSize * boardSize];
         boards[1] = new char[boardSize * boardSize];
-
-        // Initialize both boards to water
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < boardSize * boardSize; j++) {
                 boards[i][j] = WATER;
             }
         }
+        // set starting player to 0 i.e. the first player starts
         currentPlayer = 0;
     }
-    public static boolean placeShip(File file) {
-        if (boardSet)
-            gameReady = true;
-        if (gameReady)
-            return true;
-        if (file == null)
-            placeShipRandom(boards[currentPlayer]);
-        else
-            placeShipFromFile(file, boards[currentPlayer]);
-        boardSet = true;
-
-        nextPlayer();
-        return false;
-    }
-
+    // Reads in a File, checks for correct ship placement and if correct places the ships on the board
     public static void placeShipFromFile(File file, char[] board) {
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             int index = 0;
@@ -119,7 +111,7 @@ public class BGE {
         // Must match exactly
         return Arrays.equals(foundCounts, expected);
     }
-
+    // Helper function for verifying the board
     private static int detectShip(char[] board, boolean[][] visited, int x, int y) {
         int dx = 0, dy = 0;
 
@@ -148,7 +140,6 @@ public class BGE {
                     }
                 }
             }
-
             cx += dx;
             cy += dy;
             length++;
@@ -228,6 +219,15 @@ public class BGE {
     }
     // Place ships Random - End
 
+    /**
+     * Shoots at x,y, sets the boards x,y to Miss or hit
+     * @param x column index of the shot
+     * @param y row index of the shot
+     * @return  0 - Miss
+     *          1 - Hit
+     *          2 - Hit and Sunk Ship
+     *          3 - Shoot at already Hit tile
+     */
     public static int shoot(int x, int y) {
         // Determine opponent board
         int opponentId = (currentPlayer + 1) % 2;
@@ -255,6 +255,11 @@ public class BGE {
         // Already shot here (HIT or MISS) – no change
         return 3;
     }
+
+    /**
+     * @param hit takes hit as a parameter to determine which board to display (required do to nextPlayer call in shoot)
+     * @return a masked char[] just showing Sea, Misses and Hits
+     */
     public static char[] getBoard(boolean hit) {
         // Get opponent's board (the one the current player is shooting at)
         int opponentId;
@@ -277,43 +282,40 @@ public class BGE {
         return visible;
     }
 
+    /**
+     * @return 0 if the game is still running, and 1 and 2 depending on the winner
+     */
     public static int isWon() {
         int opponentId = (currentPlayer + 1) % 2;
 
         // If opponent has no SHIP tiles left, current player wins
-        if (!containsShip(boards[opponentId])) return 1;
+        if (doesntContainShip(boards[opponentId])) return 1;
 
         // If current player has no SHIP tiles left, they lost
-        if (!containsShip(boards[currentPlayer])) return 2;
+        if (doesntContainShip(boards[currentPlayer])) return 2;
 
         // Game still in progress
         return 0;
     }
 
+
     /**
-     * Returns true if the given board still contains any unhit ship tiles.
+     * Helper function for isWon()
+     * @param board the char[] to be checked
+     * @return if there are still ships on the board
      */
-    private static boolean containsShip(char[] board) {
+    private static boolean doesntContainShip(char[] board) {
         for (char c : board) {
-            if (c == SHIP) return true;
+            if (c == SHIP) return false;
         }
-        return false;
-    }
-    public static void setCurrentPlayer(int player) {
-        currentPlayer = player;
-    }
-    public static void nextPlayer() {
-        currentPlayer = (currentPlayer + 1) % 2;
-    }
-    public static int getCurrentPlayer() {
-        return currentPlayer;
+        return true;
     }
 
     /**
      * After a hit at (x,y), check if that ship is now fully sunk.
      * If so, mark all surrounding water cells as MISS.
      *
-     * @param board  the opponent's board array (flat, length = boardSize*boardSize)
+     * @param board  the opponent's board array
      * @param x      column index of the recent hit
      * @param y      row index of the recent hit
      * @return true if the ship got sunk by this hit; false otherwise
@@ -379,6 +381,18 @@ public class BGE {
         }
 
         return true;
+    }
+    public static void setCurrentPlayer(int player) {
+        currentPlayer = player;
+    }
+    public static void nextPlayer() {
+        currentPlayer = (currentPlayer + 1) % 2;
+    }
+    public static int getCurrentPlayer() {
+        return currentPlayer;
+    }
+    public static int getBoardSize() {
+        return boardSize;
     }
 
     // Tests

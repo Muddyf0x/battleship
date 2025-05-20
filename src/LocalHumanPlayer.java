@@ -8,8 +8,9 @@ public class LocalHumanPlayer implements PlayerController {
     }
 
     @Override
-    public void setupBoard(char[] board, int boardSize) {
+    public void setupBoard(char[] board) {
         File shipFile = IO.askForCustomBoardFile();
+        // if no file is provided a random layout is chosen
         if (shipFile != null) {
             BGE.placeShipFromFile(shipFile, board);
         } else {
@@ -18,10 +19,10 @@ public class LocalHumanPlayer implements PlayerController {
     }
 
     @Override
-    public int[] getNextMove(char[] visibleBoard, int boardSize) {
-        String input = IO.askForTargetCoordinate(boardSize, playerName);
+    public int[] getNextMove(char[] visibleBoard) {
+        String input = IO.askForTargetCoordinate(playerName);
         if ("QUIT".equalsIgnoreCase(input)) return null;
-        return IO.parseCoordinate(input, boardSize);
+        return IO.parseCoordinate(input);
     }
 
     @Override
@@ -29,7 +30,7 @@ public class LocalHumanPlayer implements PlayerController {
         System.out.println(hit ? "Hit!" : "Miss!");
     }
     @Override
-    public String getPLAYER_NAME() {
+    public String getPlayerName() {
         return playerName;
     }
 }

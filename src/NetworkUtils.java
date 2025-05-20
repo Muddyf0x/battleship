@@ -4,14 +4,17 @@ import java.io.IOException;
 import java.net.Socket;
 
 class NetworkUtils {
+
     final String SERVER_ADRESSE;
     final int PORT;
 
+    private final Socket socket;
     private final DataInputStream in;
     private final DataOutputStream out;
 
-    private String EnemyName;
+    private String EnemyName;   // Name of the opposing player
 
+    // variables to accessed by the Ui
     private boolean turn;
     private int hit;
     private String winner;
@@ -23,30 +26,28 @@ class NetworkUtils {
         this.PORT = port;
         this.winner = null;
 
-        Socket socket = new Socket(SERVER_ADRESSE, PORT);
+        socket = new Socket(SERVER_ADRESSE, PORT);
         in  = new DataInputStream(socket.getInputStream());
         out = new DataOutputStream(socket.getOutputStream());
     }
     public void connectToServer(String code, String name, char[] board) throws IOException {
-        // send handshake
-        out.writeUTF(code);
-        out.writeUTF(name);
-        out.writeUTF(new String(board));
+        out.writeUTF(code);                 // send handshake
+        out.writeUTF(name);                 // send Username
+        out.writeUTF(new String(board));    // send the board to the Server
         out.flush();
 
-        EnemyName = in.readUTF();
-        turn = in.readBoolean();
+        EnemyName = in.readUTF();           // get enemyName
+        turn = in.readBoolean();            // and who starts
     }
 
     public void sendShoot(int x, int y) throws IOException {
         out.writeUTF("SHOOT");   // pro-word
-        out.writeInt(x);         // first coordinate
-        out.writeInt(y);         // second coordinate
+        out.writeInt(x);            // first coordinate
+        out.writeInt(y);            // second coordinate
         out.flush();
     }
 
     public void receiveResult() throws IOException {
-        // Todo - fix this
         // 1) framing tag
         String tag = in.readUTF();
         if (!"RESULT".equals(tag)) {
@@ -73,17 +74,37 @@ class NetworkUtils {
         } else
             winner = null;
     }
+
+    /**
+     * Helper function for receiving the result
+     * @param s String input from the Server
+     * @return The int[] with {x, y}
+     */
     public static int[] parseCoords(String s) {
         // e.g. s = "[3, 5]"
         String[] p = s.replaceAll("\\[|\\]|\\s", "").split(",");
         return new int[]{ Integer.parseInt(p[0]), Integer.parseInt(p[1]) };
     }
-    // Todo - implement graceful disconnection
+    // gracefully end the connection to the server
     public void endConnection() {
+        // Close output stream
+        try {
+            out.close();
+        } catch (IOException ignored) {}
 
+        // Close input stream
+        try {
+            in.close();
+        } catch (IOException ignored) {}
+
+        // Close socket
+        try {
+            if (!socket.isClosed()) {
+                socket.close();
+            }
+        } catch (IOException ignored) {}
     }
-
-    // Todo - check actually used functions
+    // expose the data from the server to the UI
     public String getEnemyName() {
         return this.EnemyName;
     }

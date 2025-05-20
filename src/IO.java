@@ -5,12 +5,11 @@ import java.net.UnknownHostException;
 import java.util.Scanner;
 
 public class IO {
-    // Todo - look over class for unused or duplicate code
-    // Todo - write tests
     private static final Scanner scanner = new Scanner(System.in);
+    private static final int BOARD_SIZE = BGE.getBoardSize();
 
     // Converts inputs like "B7", "7B", "b7", etc. to int[2] = {x, y}
-    public static int[] parseCoordinate(String input, int boardSize) throws IllegalArgumentException {
+    public static int[] parseCoordinate(String input) throws IllegalArgumentException {
         input = input.trim().toUpperCase();
 
         Character letter = null;
@@ -35,7 +34,7 @@ public class IO {
         int x = letter - 'A';
         int y = Integer.parseInt(numberPart) - 1;
 
-        if (x < 0 || x >= boardSize || y < 0 || y >= boardSize) {
+        if (x < 0 || x >= BOARD_SIZE || y < 0 || y >= BOARD_SIZE) {
             throw new IllegalArgumentException("Coordinates out of board range.");
         }
 
@@ -58,16 +57,14 @@ public class IO {
     """);
     }
     public static String promptPlayerName() {
-        System.out.println("""
+        System.out.print("""
     ================== PLAYER SETUP ==================
 
     Please enter your player name. This will be used
     to identify you during the game.
 
     ================================================
-    Enter your name:""");
-
-        Scanner scanner = new Scanner(System.in);
+    Enter your name: """);
         String name;
 
         while (true) {
@@ -77,7 +74,7 @@ public class IO {
         }
     }
     public static int showGameModeSelection() {
-        System.out.println("""
+        System.out.print("""
     ================== GAME MODE SELECTION ==================
 
     1) Singleplayer         - You vs The AI
@@ -86,18 +83,17 @@ public class IO {
     4) Quit                 - Exit the game
 
     =========================================================
-    Please enter a number [1-4] to select a mode:""");
+    Please enter a number [1-4] to select a mode: """);
 
-        Scanner scanner = new Scanner(System.in);
         while (true) {
-            String input = scanner.nextLine().trim();
+            String input = scanner.nextLine().trim().toLowerCase();
             switch (input) {
                 case "1", "2", "3" -> {
                     int selected = Integer.parseInt(input);
                     System.out.println("You selected: " + getModeName(selected));
                     return selected;
                 }
-                case "5" -> {
+                case "4", "quit" -> {
                     System.out.println("Thanks for playing! Goodbye 👋");
                     System.exit(0);
                 }
@@ -105,18 +101,17 @@ public class IO {
                     System.out.println("How'd we get here?");
                     return Integer.parseInt(input);
                 }
-                default -> System.out.print("Invalid input. Please enter a number between 1 and 5: ");
+                default -> System.out.print("Invalid input. Please enter a number between 1 and 4: ");
             }
         }
     }
     public static int promptDifficulty() {
-        Scanner scanner = new Scanner(System.in);
 
         System.out.println("================== DIFFICULTY SELECTION ==================\n");
         System.out.println("    1) Easy    - Simple random AI");
         System.out.println("    2) Medium  - Parity + Target AI");
         System.out.println("=========================================================\n");
-        System.out.print("    Please enter a number [1-2] to select difficulty: ");
+        System.out.print("Please enter a number [1-2] to select difficulty: ");
 
         int choice;
         while (true) {
@@ -145,8 +140,6 @@ public class IO {
     ======================================================
     Please enter 1 or 2:
     """);
-
-        Scanner scanner = new Scanner(System.in);
         while (true) {
             String input = scanner.nextLine().trim();
             if (input.equals("1")) return true;
@@ -165,7 +158,6 @@ public class IO {
     ==========================================================
     """);
 
-        Scanner scanner = new Scanner(System.in);
         while (true) {
             System.out.print("Server address: ");
             String input = scanner.nextLine().trim();
@@ -192,26 +184,26 @@ public class IO {
             default -> "Unknown";
         };
     }
-    public static void printBoard(char[] board, int boardSize) {
+    public static void printBoard(char[] board) {
         // Print top letters
         System.out.print("   ");
-        for (int x = 0; x < boardSize; x++) {
+        for (int x = 0; x < BOARD_SIZE; x++) {
             System.out.print((char) ('A' + x) + " ");
         }
         System.out.println();
 
-        for (int y = 0; y < boardSize; y++) {
+        for (int y = 0; y < BOARD_SIZE; y++) {
             // Print left-side number (row index)
             System.out.printf("%2d ", y + 1);
-            for (int x = 0; x < boardSize; x++) {
-                System.out.print(board[x + y * boardSize] + " ");
+            for (int x = 0; x < BOARD_SIZE; x++) {
+                System.out.print(board[x + y * BOARD_SIZE] + " ");
             }
             System.out.println();
         }
     }
 
 
-    public static String askForTargetCoordinate(int boardSize, String name) {
+    public static String askForTargetCoordinate(String name) {
         System.out.println("\n================== " + name.toUpperCase() + "'S TURN ==================\n");
         System.out.println("""
     Enter the coordinate to fire at.
@@ -220,10 +212,9 @@ public class IO {
     """);
 
         // Build valid letter range based on board size
-        char maxLetter = (char) ('A' + boardSize - 1);
-        String regex = "^[A-" + maxLetter + "]([1-9]|" + (boardSize >= 10 ? "10" : "") + ")$";
+        char maxLetter = (char) ('A' + BOARD_SIZE - 1);
+        String regex = "^[A-" + maxLetter + "]([1-9]|" + (BOARD_SIZE >= 10 ? "10" : "") + ")$";
 
-        Scanner scanner = new Scanner(System.in);
         while (true) {
             System.out.print("Target: ");
             String input = scanner.nextLine().trim().toUpperCase();
@@ -235,7 +226,7 @@ public class IO {
             if (input.matches(regex)) {
                 return input;
             } else {
-                System.out.println("Invalid input. Please enter a valid coordinate (A1–" + maxLetter + boardSize + ") or type 'quit'.");
+                System.out.println("Invalid input. Please enter a valid coordinate (A1–" + maxLetter + BOARD_SIZE + ") or type 'quit'.");
             }
         }
     }
@@ -251,7 +242,6 @@ public class IO {
     ========================================
     """);
 
-        Scanner scanner = new Scanner(System.in);
         while (true) {
             System.out.print("File path or 'no': ");
             String input = scanner.nextLine().trim();
